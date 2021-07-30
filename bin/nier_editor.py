@@ -46,7 +46,7 @@ def main():
     path = get_path(args.path)
     log.debug(f'Loading data from path={path.as_posix()}')
     game_data = GameData.load(path)
-    slots = game_data.slots if args.slot is None else [game_data.slots[args.slot]]
+    slots = game_data.slots if args.slot is None else [game_data.slots[args.slot - 1]]
     action, sub_action = args.action, args.sub_action
     if action == 'garden':
         if sub_action == 'view':
