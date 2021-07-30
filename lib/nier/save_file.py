@@ -232,6 +232,17 @@ class SaveFile(Constructed, construct=Savefile):
             if plot._parsed.seed != 255:
                 plot._parsed.time = dt
 
+    def set_fertilizer(self, fertilizer):
+        for plot in self.iter_garden_plots():
+            plot._parsed.fertilizer = fertilizer
+
+    def set_water(self, water: int):
+        kwargs = {'once': water >= 1, 'twice': water >= 2}
+        for plot in self.iter_garden_plots():
+            if plot._parsed.seed != 255:
+                for key, val in kwargs.items():
+                    setattr(plot._parsed.water, key, val)
+
 
 class GardenPlot(Constructed, construct=Plot):
     def __init__(self, plot, row: int, num: int):
@@ -248,8 +259,8 @@ class GardenPlot(Constructed, construct=Plot):
         plant = SEED_RESULT_MAP.get(self.seed, self.seed)
         plant = 'None' if plant == 255 else plant
         fertilizer = self.fertilizer.split()[0]
-        unk = self.raw('_unk2')[-4:].hex()
-        return f'\u2039{plant} | F:{fertilizer} | W:{self.watered} | {planted} | {unk}\u203a'
+        direction = self.direction.hex()
+        return f'\u2039{plant} | F:{fertilizer} | W:{self.watered} | {planted} | {direction}\u203a'
 
     def __repr__(self):
         planted = self.time.isoformat(' ') if self.time else None

@@ -110,7 +110,8 @@ Plot = Struct(
     fertilizer=Enum(Int8ul, **{k: i for i, k in enumerate(FERTILIZER)}),
     _unk1=Bytes(3),
     water=FlagsEnum(Int8ul, once=1, twice=2),
-    _unk2=Bytes(7),
+    _unk2=Bytes(5),
+    direction=Bytes(2),
     time=DateTime,
     _unk3=Bytes(1),
 )

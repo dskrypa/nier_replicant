@@ -10,6 +10,7 @@ import logging
 from argparse import ArgumentParser
 from datetime import datetime
 
+from nier.constants import FERTILIZER
 from nier.save_file import GameData
 from nier.utils import colored
 
@@ -24,12 +25,15 @@ def parser():
 
     garden_actions = garden.add_subparsers(dest='sub_action', title='subcommands')
     garden_view = garden_actions.add_parser('view', help='View the current garden state', description='View the current garden state')
-    garden_time = garden_actions.add_parser('time', help='Change the plant time for all plots', description='Change the plant time for all plots')
-    gt_group = garden_time.add_mutually_exclusive_group()
+    garden_edit = garden_actions.add_parser('edit', help='Edit garden plots', description='Edit garden plots')
+
+    gt_group = garden_edit.add_argument_group('Time Options').add_mutually_exclusive_group()
     gt_group.add_argument('--time', '-t', metavar='YYYY-MM-DD HH:MM:SS', type=datetime.fromisoformat, help='A specific time to set as the plant time')
     gt_group.add_argument('--hours', '-H', type=int, help='Set the plant time to be the given number of hours earlier than now')
+    garden_edit.add_argument('--fertilizer', '-f', choices=FERTILIZER, help='The fertilizer to use')
+    garden_edit.add_argument('--water', '-w', type=int, choices=(1, 2), help='Number of times to water')
 
-    for _parser in (parser, garden, garden_view, garden_time):
+    for _parser in (parser, garden, garden_view, garden_edit):
         _parser.add_argument('--path', '-p', help='Save file path')
         _parser.add_argument('--slot', '-s', type=int, choices=(1, 2, 3), help='Save slot to load/modify')
         _parser.add_argument('--verbose', '-v', action='count', default=0, help='Increase logging verbosity (can specify multiple times)')
@@ -57,12 +61,20 @@ def main():
                 if prefix:
                     print(colored(f'{slot}:', 14))
                 slot.show_garden(prefix=prefix)
-        elif sub_action == 'time':
+        elif sub_action == 'edit':
             if len(slots) > 1:
                 raise ValueError('--slot is required for setting garden plant times')
-            slots[0].set_plant_times(args.time, args.hours)
-            log.info('Updated plant times:')
-            slots[0].show_garden()
+            slot = slots[0]
+            if args.time or args.hours:
+                slot.set_plant_times(args.time, args.hours)
+            if args.fertilizer:
+                slot.set_fertilizer(args.fertilizer)
+            if args.water:
+                slot.set_water(args.water)
+
+            log.info('Updated garden:')
+            slot.show_garden()
+            slot._parsed.save_time = datetime.now()
             game_data.save(path)
         else:
             raise ValueError(f'Unexpected {sub_action=}')
