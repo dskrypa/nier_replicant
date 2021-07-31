@@ -138,9 +138,11 @@ class Constructed:
             val = json.dumps(val, sort_keys=True, indent=4, cls=PseudoJsonEncoder)
         print(f'{colored(key, 14)}: {val}')
 
-    def pprint(self, unknowns: bool = False, **kwargs):
+    def pprint(self, unknowns: bool = False, keys: Collection[str] = None, **kwargs):
         last_was_view = False
         for key in self._offsets_and_sizes:
+            if keys and key not in keys:
+                continue
             val = self[key]
             if isinstance(val, bytes):
                 if unknowns or not key.startswith('_unk'):
@@ -311,7 +313,7 @@ class GardenPlot(Constructed, construct=Plot):
         self._row = row
         self._num = num
 
-    @cached_property
+    @property
     def watered(self) -> str:
         return ''.join('\u25cb' if v else '\u2715' for k, v in self.water.items() if k != '_flagsenum')
 
