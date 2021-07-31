@@ -1,12 +1,13 @@
 import json
 import sys
-from collections.abc import Mapping, KeysView, ValuesView
+from collections.abc import Mapping, KeysView, ValuesView, Callable
 from datetime import datetime, date, timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
 from struct import calcsize, unpack_from, error as StructError
 from traceback import format_tb
 from types import TracebackType
+from typing import Union
 from unicodedata import category
 
 from colored import stylize, fg
@@ -17,7 +18,14 @@ def colored(text, fg_color):
 
 
 def to_hex_and_str(
-    pre, data: bytes, *, encoding: str = 'utf-8', fill: int = 0, struct: str = None, offset: int = 0, pad: bool = False
+    pre,
+    data: bytes,
+    *,
+    encoding: str = 'utf-8',
+    fill: int = 0,
+    struct: Union[str, Callable] = None,
+    offset: int = 0,
+    pad: bool = False,
 ) -> str:
     """
     Format the given bytes to appear similar to the format used by xxd.  Intended to be called for each line - splitting
@@ -51,17 +59,23 @@ def to_hex_and_str(
             as_str += ' ' * to_fill
 
     if struct:
-        if struct is repr:
-            from_struct = data
-        else:
+        if isinstance(struct, str):
             from_struct = []
             for i in range(offset, len(data), calcsize(struct)):
                 try:
                     from_struct.extend(unpack_from(struct, data, i))
                 except StructError:
                     pass
+        elif isinstance(struct, Callable):
+            from_struct = struct(data)
+        else:
+            raise TypeError(f'Unexpected struct type={type(struct)}')
         return f'{pre} {as_hex}  |  {as_str}  |  {from_struct}'
     return f'{pre} {as_hex}  |  {as_str}'
+
+
+def to_bin_str(data: bytes, sep: str = ' '):
+    return sep.join(map('{:08b}'.format, data))
 
 
 class PseudoJsonEncoder(json.JSONEncoder):

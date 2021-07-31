@@ -117,8 +117,8 @@ Plot = Struct(
     fertilizer=Enum(Int8ul, **{k: i for i, k in enumerate(FERTILIZER)}),
     _unk1=Bytes(3),
     water=FlagsEnum(Int8ul, first=1, second=2),
-    _unk2=Bytes(5),      #  dirs = [b'\x00\x00', b'\x34\x43', b'\x87\x43', b'\xb4\x42']
-    direction=Bytes(2),  # one of [0000, 3443, 8743, b442] (I assume N/S/E/W, but not sure which is which)
+    _unk2=Bytes(3),
+    direction=Enum(Float32l, East=0, North=90, West=180, South=270),
     time=DateTime,
     _unk3=Bytes(1),
 )
@@ -132,6 +132,7 @@ Weapons = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0)))
 
 # endregion
 
+
 Savefile = Struct(
     corruptness=ExprValidator(Int32ul, lambda val, ctx: val == 200),
     map=PaddedString(32, 'utf-8'),
@@ -140,8 +141,8 @@ Savefile = Struct(
     name=PaddedString(32, 'utf-8'),
     health=Int32sl, health_kaine=Int32sl, health_emil=Int32sl,
     magic=Float32l, magic_kaine=Float32l, magic_emil=Float32l,
-    level=Int32sl,
-    _unk3=Bytes(8),
+    level=Int32sl,  # Level index, not actual integer level - add one for level displayed in-game
+    level_kaine=Int32sl, level_emil=Int32sl,  # _unk3=Bytes(8),  # Unconfirmed, but they seem to match Nier's
     xp=Int32sl,
     _unk4=Bytes(12),
     order_kaine=Int32ul, order_emil=Int32ul,
@@ -151,20 +152,20 @@ Savefile = Struct(
     _unk6=Bytes(12),
     money=Int32sl,
     recovery=Recovery,
-    _unk7=Bytes(7),
+    _unk7=Bytes(7),  # zeros
     cultivation=Cultivation,
-    _unk8=Bytes(10),
+    _unk8=Bytes(10),  # zeros
     fishing=Fishing,
-    _unk9=Bytes(5),
+    _unk9=Bytes(5),  # zeros
     raw_materials=RawMaterials,
     key_items=KeyItems,
-    _unk10=Bytes(176),
+    _unk10=Bytes(176),  # zeros
     documents=Documents,
-    _unk11=Bytes(168),
+    _unk11=Bytes(168),  # zeros
     maps=Maps,
-    _unk12=Bytes(264),
+    _unk12=Bytes(264),  # :40=zeros; 40:84=content; 84:104=zeros; 104:108=content; 108:128=zeros; 128:=mostly 0xFF
     total_play_time=Float64l,
-    _unk13=Bytes(4),
+    _unk13=Bytes(4),  # zeros
     weapons=Weapons,
     _unk14=Bytes(225),
     quests=Int32ul[16],
@@ -176,11 +177,16 @@ Savefile = Struct(
     garden=Garden,
     _unk17b=Bytes(332),
     quest=Int32ul,
-    _unk18a=Bytes(1326),
+    _unk18a1=Bytes(240),
+    _unk18a2=Bytes(240),  # zeros
+    _unk18a3=Bytes(40),
+    _unk18a4=Bytes(720),  # zeros
+    _unk18a5=Bytes(86),
     save_time=DateTime,
-    _unk18b=Bytes(32971),
+    _unk18b1=Bytes(200),
+    _unk18b2=Bytes(32771),  # zeros
     checksum=Checksum,
-    _unk19=Bytes(12),
+    _unk19=Bytes(12),  # zeros
 )
 
 Gamedata = Struct(_unk=Bytes(33120), slots=RawCopy(Savefile)[3], _unk2=Bytes(149888))

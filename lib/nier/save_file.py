@@ -320,15 +320,13 @@ class GardenPlot(Constructed, construct=Plot):
         plant = SEED_RESULT_MAP.get(self.seed, self.seed)
         plant = 'None' if plant == 255 else plant
         fertilizer = self.fertilizer.split()[0]
-        direction = self.direction.hex()
-        return f'\u2039{plant} | F:{fertilizer} | W:{self.watered} | {planted} | {direction}\u203a'
+        return f'\u2039{plant} | F:{fertilizer} | W:{self.watered} | {planted} | {self.direction:>5s}\u203a'
 
     def __repr__(self) -> str:
         planted = self.time.isoformat(' ') if self.time else None
-        return (
-            f'<GardenPlot[{self._row}x{self._num} @ {planted}, {self.seed} + {self.fertilizer} (watered:'
-            f' {self.watered})]({self._data[:-8].hex(" ", -4)})>'
-        )
+        seed = 'None' if self.seed == 255 else self.seed
+        plot, water, direction = f'{self._row}x{self._num}', self.watered, self.direction
+        return f'<GardenPlot[{plot} @ {planted}, {seed} + {self.fertilizer}, water:{water}, dir: {direction}]>'
 
 
 def _build(obj):
