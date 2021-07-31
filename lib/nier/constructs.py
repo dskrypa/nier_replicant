@@ -92,9 +92,9 @@ class Weapon(Adapter):  # noqa
         return SPEARS.index(name) + 40
 
 
-def _struct_parts(sections, unknowns):
+def _struct_parts(sections, unknowns, struct=Int8ul):
     for i, (unknown, section) in enumerate(zip(unknowns, sections)):
-        yield from (v / Int8ul for v in section)
+        yield from (v / struct for v in section)
         if unknown:
             yield f'_unk{i}' / Bytes(unknown)
 
@@ -105,14 +105,15 @@ def _struct_parts(sections, unknowns):
 
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
 Ability = Enum(Int32ul, **{k: i for i, k in enumerate(ABILITIES)})
-Words = BitsSwapped(BitStruct(*((w if w else f'_word_{i}') / Flag for i, w in enumerate(WORDS))))
+WordsLearned = BitsSwapped(BitStruct(*((w if w else f'_word_{i}') / Flag for i, w in enumerate(WORDS))))
+WordEquipped = Enum(Int8ul, **({k: i for i, k in enumerate(WORDS)} | {'None': 255}))
 
 KeyItems = Struct(*(v / Int8ul for v in KEY_ITEMS))
 Documents = Struct(*(v / Int8ul for v in DOCUMENTS))
 Maps = Struct(*(v / Int8ul for v in MAPS))
 
 Plot = Struct(
-    seed=Enum(Int8ul, **{k: i for i, k in enumerate(PLANTS)}),
+    seed=Enum(Int8ul, **({k: i for i, k in enumerate(PLANTS)} | {'None': 255})),
     _unk0=Bytes(3),
     fertilizer=Enum(Int8ul, **{k: i for i, k in enumerate(FERTILIZER)}),
     _unk1=Bytes(3),
@@ -129,6 +130,8 @@ Cultivation = Struct(*_struct_parts((FERTILIZERS, SEEDS, CULTIVATED), (2, 5, 0))
 Fishing = Struct(*_struct_parts((BAIT, FISH), (7, 0)))
 RawMaterials = Struct(*_struct_parts(RAW_MATERIALS.values(), (3, 4, 5, 4, 1, 5, 1, 3, 0)))
 Weapons = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0)))
+WeaponWords = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WordEquipped))  # noqa
+AbilityWords = Struct(*(a / WordEquipped for a in ABILITIES[1:]))
 
 # endregion
 
@@ -170,8 +173,14 @@ Savefile = Struct(
     _unk14=Bytes(225),
     quests=Int32ul[16],
     _unk15=Bytes(312),
-    words=Words,
-    _unk16=Bytes(168),
+    words=WordsLearned,
+    _unk16a=Bytes(16),
+    ability_words_a=AbilityWords,
+    weapon_words_a=WeaponWords,
+    _unk16b=Bytes(13),
+    ability_words_b=AbilityWords,
+    weapon_words_b=WeaponWords,
+    _unk16c=Bytes(17),
     tutorials=Int32ul[3],
     _unk17a=Bytes(412),
     garden=Garden,
