@@ -42,44 +42,34 @@ def parser():
 
 def main():
     args = parser().parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(name)s %(lineno)d %(message)s')
-    else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
+    log_fmt = '%(asctime)s %(levelname)s %(name)s %(lineno)d %(message)s' if args.verbose else '%(message)s'
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format=log_fmt)
 
-    path = get_path(args.path)
-    log.debug(f'Loading data from path={path.as_posix()}')
-    game_data = GameData.load(path)
+    game_data = GameData.load(get_path(args.path))
     slots = game_data.slots if args.slot is None else [game_data.slots[args.slot - 1]]
-    action, sub_action = args.action, args.sub_action
-    if action == 'garden':
-        if sub_action == 'view':
+
+    if args.action == 'garden':
+        if args.sub_action == 'view':
             prefix = '    ' if len(slots) > 1 else ''
             for i, slot in enumerate(slots):
                 if i:
                     print()
                 if prefix:
                     print(colored(f'{slot}:', 14))
-                slot.show_garden(prefix=prefix)
-        elif sub_action == 'edit':
+                slot.garden.show(prefix=prefix)
+        elif args.sub_action == 'edit':
             if len(slots) > 1:
                 raise ValueError('--slot is required for setting garden plant times')
             slot = slots[0]
-            if args.time or args.hours:
-                slot.set_plant_times(args.time, args.hours)
-            if args.fertilizer:
-                slot.set_fertilizer(args.fertilizer)
-            if args.water:
-                slot.set_water(args.water)
-
+            slot.garden.update(args.time, args.hours, args.fertilizer, args.water)
             log.info('Updated garden:')
-            slot.show_garden()
-            slot._parsed.save_time = datetime.now()
-            game_data.save(path)
+            slot.garden.show()
+            slot['save_time'] = datetime.now()
+            game_data.save()
         else:
-            raise ValueError(f'Unexpected {sub_action=}')
+            raise ValueError(f'Unexpected sub_action={args.sub_action!r}')
     else:
-        raise ValueError(f'Unexpected {action=}')
+        raise ValueError(f'Unexpected action={args.action!r}')
 
 
 def get_path(path):

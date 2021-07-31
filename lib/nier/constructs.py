@@ -17,7 +17,7 @@ from typing import Optional
 
 from construct import Struct, Int8ul, Int32sl, Int32ul, Float64l, Float32l, PaddedString, Bytes, Int16ul
 from construct import Enum, FlagsEnum, Sequence, Adapter, BitStruct, Flag, BitsSwapped, ExprValidator, Subconstruct
-from construct import ValidationError, RawCopy
+from construct import ValidationError, RawCopy, singleton
 
 from .constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, FERTILIZER, SWORDS_1H, SWORDS_2H, SPEARS
 from .constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
@@ -28,7 +28,13 @@ __all__ = ['Savefile', 'Gamedata', 'Plot']
 
 # region Helpers
 
-class DateTimeAdapter(Adapter):  # noqa
+@singleton
+class DateTime(Adapter):  # noqa
+    _base_struct = Struct(year=Int16ul, month=Int8ul, day=Int8ul, hour=Int8ul, minute=Int8ul, second=Int8ul)
+
+    def __init__(self):
+        super().__init__(self._base_struct)
+
     def _decode(self, obj, context, path) -> Optional[datetime]:
         del obj['_io']
         return datetime(**obj) if obj.year else None
@@ -38,6 +44,7 @@ class DateTimeAdapter(Adapter):  # noqa
         return {f: 0 for f in fields} if obj is None else {f: getattr(obj, f) for f in fields}
 
 
+@singleton
 class Checksum(Subconstruct):  # noqa
     def __init__(self):
         super().__init__(Int32ul)
@@ -61,6 +68,7 @@ class Checksum(Subconstruct):  # noqa
         return self.subcon._build(self._get_checksum(stream), stream, context, path)
 
 
+@singleton
 class Weapon(Adapter):  # noqa
     def __init__(self):
         super().__init__(Int32ul)
@@ -95,7 +103,6 @@ def _struct_parts(sections, unknowns):
 # region Save Slot Fields
 
 
-DateTime = DateTimeAdapter(Struct(year=Int16ul, month=Int8ul, day=Int8ul, hour=Int8ul, minute=Int8ul, second=Int8ul))
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
 Ability = Enum(Int32ul, **{k: i for i, k in enumerate(ABILITIES)})
 Words = BitsSwapped(BitStruct(*((w if w else f'_word_{i}') / Flag for i, w in enumerate(WORDS))))
@@ -109,9 +116,9 @@ Plot = Struct(
     _unk0=Bytes(3),
     fertilizer=Enum(Int8ul, **{k: i for i, k in enumerate(FERTILIZER)}),
     _unk1=Bytes(3),
-    water=FlagsEnum(Int8ul, once=1, twice=2),
-    _unk2=Bytes(5),
-    direction=Bytes(2),
+    water=FlagsEnum(Int8ul, first=1, second=2),
+    _unk2=Bytes(5),      #  dirs = [b'\x00\x00', b'\x34\x43', b'\x87\x43', b'\xb4\x42']
+    direction=Bytes(2),  # one of [0000, 3443, 8743, b442] (I assume N/S/E/W, but not sure which is which)
     time=DateTime,
     _unk3=Bytes(1),
 )
@@ -138,7 +145,7 @@ Savefile = Struct(
     xp=Int32sl,
     _unk4=Bytes(12),
     order_kaine=Int32ul, order_emil=Int32ul,
-    active_weapon=Weapon(), selected_sword_1h=Weapon(), selected_sword_2h=Weapon(), selected_spear=Weapon(),
+    active_weapon=Weapon, selected_sword_1h=Weapon, selected_sword_2h=Weapon, selected_spear=Weapon,
     _unk5=Bytes(8),
     left_bumper=Ability, right_bumper=Ability, left_trigger=Ability, right_trigger=Ability,
     _unk6=Bytes(12),
@@ -172,7 +179,7 @@ Savefile = Struct(
     _unk18a=Bytes(1326),
     save_time=DateTime,
     _unk18b=Bytes(32971),
-    checksum=Checksum(),
+    checksum=Checksum,
     _unk19=Bytes(12),
 )
 
