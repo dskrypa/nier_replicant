@@ -17,6 +17,7 @@ from construct.lib.containers import ListContainer, Container
 from .constants import MAP_ZONE_MAP, SEED_RESULT_MAP
 from .constructs import Gamedata, Savefile, Plot
 from .utils import to_hex_and_str, pseudo_json, colored, unified_byte_diff, cached_classproperty, unique_path
+from .utils import without_unknowns
 
 __all__ = ['GameData', 'SaveFile']
 log = logging.getLogger(__name__)
@@ -131,9 +132,9 @@ class Constructed:
                 print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
                 self.view(key, per_line, hide_empty, **kwargs)
 
-    def _pprint(self, key: str, val, sort_keys: bool = True):
+    def _pprint(self, key: str, val, sort_keys: bool = True, unknowns: bool = False):
         if isinstance(val, dict):
-            val = pseudo_json(val, sort_keys=sort_keys)
+            val = pseudo_json(val if unknowns else without_unknowns(val), sort_keys=sort_keys)
         print(f'{colored(key, 14)}: {val}')
 
     def pprint(
@@ -146,22 +147,22 @@ class Constructed:
     ):
         last_was_view = False
         for key in self._offsets_and_sizes:
-            if keys and key not in keys:
+            if (keys and key not in keys) or (not unknowns and key.startswith('_unk')):
                 continue
+
             if binary:
                 print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
                 self.view(key, **kwargs)
             else:
                 val = self[key]
                 if isinstance(val, bytes):
-                    if unknowns or not key.startswith('_unk'):
-                        print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
-                        self.view(key, **kwargs)
-                        last_was_view = True
+                    print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
+                    self.view(key, **kwargs)
+                    last_was_view = True
                 else:
                     if last_was_view:
                         print()
-                    self._pprint(key, val, sort_keys=sort_keys)
+                    self._pprint(key, val, sort_keys=sort_keys, unknowns=unknowns)
                     last_was_view = False
 
 
@@ -248,12 +249,14 @@ class SaveFile(Constructed, construct=Savefile):
     def garden(self) -> 'Garden':
         return Garden(self)
 
-    def _pprint(self, key: str, val, sort_keys: bool = True):
+    def _pprint(self, key: str, val, sort_keys: bool = True, unknowns: bool = False):
         if key == 'garden':
             print(f'{colored(key, 14)}:')
             self.garden.show(prefix='    ')
         else:
-            super()._pprint(key, val, sort_keys)
+            if key == 'quests':
+                val = {k: 'started={started}, done={done}'.format(**v) for k, v in without_unknowns(val).items()}
+            super()._pprint(key, val, sort_keys, unknowns=unknowns)
 
 
 class Garden:

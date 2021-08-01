@@ -219,3 +219,9 @@ class ArgParser(ArgumentParser):
             name, help=kwargs.pop('help', help_desc), description=kwargs.pop('description', help_desc), **kwargs
         )
         return sub_parser  # noqa
+
+
+def without_unknowns(data):
+    if isinstance(data, dict):
+        return {k: without_unknowns(v) for k, v in data.items() if not isinstance(k, str) or not k.startswith('_')}
+    return data
