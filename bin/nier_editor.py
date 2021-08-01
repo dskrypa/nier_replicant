@@ -7,31 +7,27 @@ sys.path.insert(0, Path(__file__).resolve().parents[1].joinpath('lib').as_posix(
 import _venv  # This will activate the venv, if it exists and is not already active
 
 import logging
-from argparse import ArgumentParser
 from datetime import datetime
 
 from nier.constants import FERTILIZER
 from nier.save_file import GameData
-from nier.utils import colored
+from nier.utils import ArgParser, colored
 
 ITEM_SECTIONS = ('recovery', 'cultivation', 'fishing', 'raw_materials')
 log = logging.getLogger(__name__)
 
 
 def parser():
-    parser = ArgumentParser(description='Nier Replicant ver.1.22474487139... Save File Editor')
-    actions = parser.add_subparsers(dest='action', title='subcommands')
-    view_parser = actions.add_parser('view', help='View information from a save file', description='View information')
-    view_actions = view_parser.add_subparsers(dest='item', title='subcommands')
-    edit_parser = actions.add_parser('edit', help='Edit information in a save file', description='Edit file')
-    edit_actions = edit_parser.add_subparsers(dest='item', title='subcommands')
+    parser = ArgParser(description='Nier Replicant ver.1.22474487139... Save File Editor')
+    view_parser = parser.add_subparser('action', 'view', 'View information from a save file')
+    edit_parser = parser.add_subparser('action', 'edit', 'Edit information in a save file')
 
     _parsers = [parser, view_parser, edit_parser]
 
     def _view_and_edit(name: str, desc: str = None):
         desc = desc or name
-        _view = view_actions.add_parser(name, help=f'View {desc}', description=f'View {desc}')
-        _edit = edit_actions.add_parser(name, help=f'Edit {desc}', description=f'Edit {desc}')
+        _view = view_parser.add_subparser('item', name, f'View {desc}')
+        _edit = edit_parser.add_subparser('item', name, f'Edit {desc}')
         _parsers.append(_view)
         _parsers.append(_edit)
         return _view, _edit

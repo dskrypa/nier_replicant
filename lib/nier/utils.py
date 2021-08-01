@@ -1,5 +1,6 @@
 import json
 import sys
+from argparse import ArgumentParser
 from collections.abc import Mapping, KeysView, ValuesView, Callable
 from datetime import datetime, date, timedelta
 from difflib import SequenceMatcher
@@ -193,3 +194,28 @@ def unique_path(parent: Path, stem: str, suffix: str, seps=('_', '-'), n: int = 
         name = f'{stem}{n_sep}{n}{suffix}'
         n += 1
     return path
+
+
+class ArgParser(ArgumentParser):
+    def _get_subparser(self, dest: str):
+        try:
+            return next((sp for sp in self._subparsers._group_actions if sp.dest == dest), None)
+        except AttributeError:  # If no subparsers exist yet
+            return None
+
+    def add_subparser(self, dest: str, name: str, help_desc: str = None, **kwargs) -> 'ArgParser':
+        """
+        Add a subparser for a subcommand to the subparser group with the given destination variable name.  Creates the
+        group if it does not already exist.
+
+        :param dest: The subparser group destination for this subparser
+        :param name: The name of the subcommand/subparser to add
+        :param help_desc: The text to be used as both the help and description for this subcommand
+        :param kwargs: Keyword args to pass to the :func:`add_parser` function
+        :return: The parser that was created
+        """
+        sp_group = self._get_subparser(dest) or self.add_subparsers(dest=dest, title='subcommands')
+        sub_parser = sp_group.add_parser(
+            name, help=kwargs.pop('help', help_desc), description=kwargs.pop('description', help_desc), **kwargs
+        )
+        return sub_parser  # noqa
