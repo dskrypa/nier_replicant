@@ -17,11 +17,11 @@ from typing import Optional
 
 from construct import Struct, Int8ul, Int32sl, Int32ul, Float64l, Float32l, PaddedString, Bytes, Int16ul
 from construct import Enum, FlagsEnum, Sequence, Adapter, BitStruct, Flag, BitsSwapped, ExprValidator, Subconstruct
-from construct import ValidationError, RawCopy, singleton
+from construct import ValidationError, RawCopy, singleton, Bit
 
 from .constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, FERTILIZER, SWORDS_1H, SWORDS_2H, SPEARS
 from .constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
-# from .constants import TUTORIALS, QUEST_STARTED_A, QUEST_FINISHED_A, QUEST_STARTED_B, QUEST_FINISHED_B
+from .constants import TUTORIALS, QUESTS, QUESTS_NEW_1
 
 log = logging.getLogger(__name__)
 __all__ = ['Savefile', 'Gamedata', 'Plot']
@@ -94,31 +94,49 @@ class Weapon(Adapter):  # noqa
 
 
 class Quests(Adapter):  # noqa
-    def __init__(self, bits, start_map, end_map):
-        subcon = BitsSwapped(BitStruct(*(i / Flag for i in range(bits))))  # noqa
-        super().__init__(subcon)
-        self._start_map = start_map
-        self._end_map = end_map
+    def __init__(self, bits: int, quest_map: dict[str, tuple[int, int]]):
+        super().__init__(self._prepare_struct(bits, quest_map))
 
-    def _decode(self, obj, context, path) -> tuple[dict[str, tuple[bool, bool]], dict[int, bool]]:
-        started, completed, unknown = {}, {}, {}
-        for num, val in obj.items():
-            try:
-                name = self._start_map[num]
-            except KeyError:
-                try:
-                    name = self._end_map[num]
-                except KeyError:
-                    unknown[num] = val
-                else:
-                    completed[name] = val
+    @classmethod
+    def _prepare_struct(cls, bits: int, quest_map: dict[str, tuple[int, int]]):
+        fields = []
+        last = -1
+        for i, (name, (start, end)) in enumerate(quest_map.items()):
+            if pad := start - last - 1:
+                fields.append(f'_unk_{i}' / Bit[pad])  # noqa
+
+            if mid := end - start - 1:
+                fields.append(name / Struct(started=Flag, _unk=Bit[mid], done=Flag))
             else:
-                started[name] = val
+                fields.append(name / Struct(started=Flag, done=Flag))
+            last = end
 
-        return {name: (val, completed[name]) for name, val in started.items()}, unknown
+        if remainder := bits - last - 1:
+            fields.append(f'_unk_{len(quest_map)}' / Bit[remainder])  # noqa
 
-    # def _encode(self, obj, context, path):  # TODO: Implement
-    #     return obj
+        return BitsSwapped(BitStruct(*fields))
+
+    def _decode(self, obj, context, path):
+        try:
+            a = obj.pop('Thieves in Training (1)')
+        except KeyError:
+            pass
+        else:
+            b = obj.pop('Thieves in Training (2)')
+            obj['Thieves in Training'] = {
+                'started': a['started'], '_unk': a['_unk'], '_a': a['done'], '_b': b['started'], 'done': b['done']
+            }
+        return obj
+
+    def _encode(self, obj, context, path):
+        try:
+            quest = obj.pop('Thieves in Training')
+        except KeyError:
+            pass
+        else:
+            obj['Thieves in Training (1)'] = {'started': quest['started'], '_unk': quest['_unk'], 'done': quest['_a']}
+            obj['Thieves in Training (2)'] = {'started': quest['_b'], 'done': quest['done']}
+        return obj
 
 
 def _struct_parts(sections, unknowns, struct=Int8ul):
@@ -134,7 +152,8 @@ def _struct_parts(sections, unknowns, struct=Int8ul):
 
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
 Ability = Enum(Int32ul, **{k: i for i, k in enumerate(ABILITIES)})
-WordsLearned = BitsSwapped(BitStruct(*((w if w else f'_word_{i}') / Flag for i, w in enumerate(WORDS))))
+Tutorials = BitsSwapped(BitStruct(*((n if n else f'_tutorial_{i}') / Flag for i, n in enumerate(TUTORIALS))))
+WordsLearned = BitsSwapped(BitStruct(*((n if n else f'_word_{i}') / Flag for i, n in enumerate(WORDS))))
 WordEquipped = Enum(Int8ul, **({k: i for i, k in enumerate(WORDS)} | {'None': 255}))
 WeaponState = Enum(Int8ul, **{'Level 1': 0, 'Level 2': 1, 'Level 3': 2, 'Level 4': 3, 'Not Owned': 255})
 
@@ -201,10 +220,7 @@ Savefile = Struct(
     _unk13=Bytes(4),  # zeros
     weapons=Weapons,
     _unk14=Bytes(225),
-
-    # quests=Quests(512, QUEST_STARTED_A, QUEST_FINISHED_A),
-    quests=Int32ul[16],
-
+    quests=Quests(512, QUESTS),
     _unk15=Bytes(312),
     words=WordsLearned,
     _unk16a=Bytes(16),
@@ -214,16 +230,11 @@ Savefile = Struct(
     ability_words_b=AbilityWords,
     weapon_words_b=WeaponWords,
     _unk16c=Bytes(17),
-
-    tutorials=Int32ul[3],  # TODO: Enum
-
+    tutorials=Tutorials,  # 12
     _unk17a=Bytes(412),
     garden=Garden,  # 360
     _unk17b=Bytes(332),
-
-    # quests_b=Quests(32, QUEST_STARTED_B, QUEST_FINISHED_B),
-    quests_b=Int32ul,
-
+    quests_b=Quests(32, QUESTS_NEW_1),
     _unk18a1=Bytes(240),
     _unk18a2=Bytes(240),  # zeros
     _unk18a3=Bytes(40),
