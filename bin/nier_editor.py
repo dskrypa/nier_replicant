@@ -14,35 +14,43 @@ from nier.constants import FERTILIZER
 from nier.save_file import GameData
 from nier.utils import colored
 
+ITEM_SECTIONS = ('recovery', 'cultivation', 'fishing', 'raw_materials')
 log = logging.getLogger(__name__)
 
 
 def parser():
     parser = ArgumentParser(description='Nier Replicant ver.1.22474487139... Save File Editor')
-
     actions = parser.add_subparsers(dest='action', title='subcommands')
-    garden = actions.add_parser('garden', help='Examine or modify the garden', description='Examine or modify the garden')
+    view_parser = actions.add_parser('view', help='View information from a save file', description='View information')
+    view_actions = view_parser.add_subparsers(dest='item', title='subcommands')
+    edit_parser = actions.add_parser('edit', help='Edit information in a save file', description='Edit file')
+    edit_actions = edit_parser.add_subparsers(dest='item', title='subcommands')
 
-    garden_actions = garden.add_subparsers(dest='sub_action', title='subcommands')
-    garden_view = garden_actions.add_parser('view', help='View the current garden state', description='View the current garden state')
-    garden_edit = garden_actions.add_parser('edit', help='Edit garden plots', description='Edit garden plots')
-    gt_group = garden_edit.add_argument_group('Time Options').add_mutually_exclusive_group()
+    _parsers = [parser, view_parser, edit_parser]
+
+    def _view_and_edit(name: str, desc: str = None):
+        desc = desc or name
+        _view = view_actions.add_parser(name, help=f'View {desc}', description=f'View {desc}')
+        _edit = edit_actions.add_parser(name, help=f'Edit {desc}', description=f'Edit {desc}')
+        _parsers.append(_view)
+        _parsers.append(_edit)
+        return _view, _edit
+
+    view_garden, edit_garden = _view_and_edit('garden', 'garden plots')
+    gt_group = edit_garden.add_argument_group('Time Options').add_mutually_exclusive_group()
     gt_group.add_argument('--time', '-t', metavar='YYYY-MM-DD HH:MM:SS', type=datetime.fromisoformat, help='A specific time to set as the plant time')
     gt_group.add_argument('--hours', '-H', type=int, help='Set the plant time to be the given number of hours earlier than now')
-    garden_edit.add_argument('--fertilizer', '-f', choices=FERTILIZER, help='The fertilizer to use')
-    garden_edit.add_argument('--water', '-w', type=int, choices=(1, 2), help='Number of times to water')
+    edit_garden.add_argument('--fertilizer', '-f', choices=FERTILIZER, help='The fertilizer to use')
+    edit_garden.add_argument('--water', '-w', type=int, choices=(1, 2), help='Number of times to water')
 
-    items = actions.add_parser('items', help='Examine or modify items', description='Examine or modify items')
-    items_actions = items.add_subparsers(dest='sub_action', title='subcommands')
-    items_view = items_actions.add_parser('view', help='View current items', description='View current items')
-    items_edit = items_actions.add_parser('edit', help='Edit items', description='Edit items')
-    items_edit.add_argument('item', help='Item name')
-    items_edit.add_argument('quantity', type=int, help='Number of the given item to set')
+    view_items, edit_items = _view_and_edit('items')
+    edit_items.add_argument('name', help='Item name')
+    edit_items.add_argument('quantity', type=int, help='Number of the given item to set')
 
-    for _parser in (parser, garden, garden_view, garden_edit, items_view, items_edit):
+    for _parser in _parsers:
         _parser.add_argument('--path', '-p', help='Save file path')
         _parser.add_argument('--slot', '-s', type=int, choices=(1, 2, 3), help='Save slot to load/modify')
-        _parser.add_argument('--verbose', '-v', action='count', default=0, help='Increase logging verbosity (can specify multiple times)')
+        _parser.add_argument('--verbose', '-v', action='store_true', help='Increase logging verbosity')
     return parser
 
 
@@ -52,55 +60,60 @@ def main():
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format=log_fmt)
 
     game_data = GameData.load(get_path(args.path))
-    slots = game_data.slots if args.slot is None else [game_data.slots[args.slot - 1]]
-
-    if args.action == 'garden':
-        if args.sub_action == 'view':
-            prefix = '    ' if len(slots) > 1 else ''
-            for i, slot in enumerate(slots):
-                if i:
-                    print()
-                if prefix:
-                    print(colored(f'{slot}:', 14))
-                slot.garden.show(prefix=prefix)
-        elif args.sub_action == 'edit':
-            if len(slots) > 1:
-                raise ValueError('--slot is required for setting garden plant times')
-            slot = slots[0]
-            slot.garden.update(args.time, args.hours, args.fertilizer, args.water)
-            log.info('Updated garden:')
-            slot.garden.show()
-            slot['save_time'] = datetime.now()
-            game_data.save()
-        else:
-            raise ValueError(f'Unexpected sub_action={args.sub_action!r}')
-    elif args.action == 'items':
-        if len(slots) > 1:
-            raise ValueError('--slot is required for setting garden plant times')
-        slot = slots[0]
-        sections = ('recovery', 'cultivation', 'fishing', 'raw_materials')
-        if args.sub_action == 'view':
-            slot.pprint(keys=set(sections))
-        elif args.sub_action == 'edit':
-            quantity = args.quantity
-            if quantity < 0 or quantity > 99:
-                raise ValueError(f'Invalid {quantity=} - must be between 0 and 99')
-            for section in sections:
-                if args.item in slot[section]:
-                    if section == 'recovery' and quantity > 10:
-                        raise ValueError(f'Invalid {quantity=} - must be between 0 and 10')
-                    old = slot[section][args.item]
-                    log.info(f'Setting quantity for item={args.item} {old} => {quantity} in {section=}')
-                    slot._parsed[section][args.item] = quantity
-                    break
-            else:
-                raise ValueError(f'Could not find item={args.item!r} in {sections=}')
-            slot['save_time'] = datetime.now()
-            game_data.save()
-        else:
-            raise ValueError(f'Unexpected sub_action={args.sub_action!r}')
+    if args.action == 'view':
+        view(game_data, args.item, args.slot, args)
+    elif args.action == 'edit':
+        edit(game_data, args.item, args.slot, args)
     else:
         raise ValueError(f'Unexpected action={args.action!r}')
+
+
+def view(game_data: GameData, item: str, slot_num: int, args):
+    slots = game_data.slots if slot_num is None else [game_data.slots[slot_num - 1]]
+    if item == 'garden':
+        prefix = '    ' if len(slots) > 1 else ''
+        for i, slot in enumerate(slots):
+            if i:
+                print()
+            if prefix:
+                print(colored(f'{slot}:', 14))
+            slot.garden.show(prefix=prefix)
+    elif item == 'items':
+        if len(slots) > 1:
+            raise ValueError('--slot is required for viewing items')
+        slots[0].pprint(keys=set(ITEM_SECTIONS))
+    else:
+        raise ValueError(f'Unexpected {item=} to view')
+
+
+def edit(game_data: GameData, item: str, slot_num: int, args):
+    if slot_num is None:
+        raise ValueError('--slot is required for editing')
+    slot = game_data.slots[slot_num - 1]
+    if item == 'garden':
+        slot.garden.update(args.time, args.hours, args.fertilizer, args.water)
+        log.info('Updated garden:')
+        slot.garden.show()
+    elif item == 'items':
+        item_name, quantity = args.name, args.quantity
+        if not 0 <= quantity <= 99:
+            raise ValueError(f'Invalid {quantity=} - must be between 0 and 99')
+
+        for section in ITEM_SECTIONS:
+            if item_name in slot[section]:
+                if section == 'recovery' and quantity > 10:
+                    raise ValueError(f'Invalid {quantity=} - must be between 0 and 10')
+                old = slot[section][item_name]
+                log.info(f'Setting quantity for item={item_name} {old} => {quantity} in {section=}')
+                slot._parsed[section][item_name] = quantity
+                break
+        else:
+            raise ValueError(f'Could not find item={item_name!r} in {ITEM_SECTIONS=}')
+    else:
+        raise ValueError(f'Unexpected {item=} to edit')
+
+    slot['save_time'] = datetime.now()
+    game_data.save()
 
 
 def get_path(path):
