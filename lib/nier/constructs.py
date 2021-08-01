@@ -247,4 +247,13 @@ Savefile = Struct(
     _unk19=Bytes(12),  # zeros
 )
 
+"""
+Change: Tutorial "Weapon Quick Switching" New -> viewed
+@@ -1,7 +1,7 @@ _unk17a
+  0x008: c100012e  |  �...  |  b'\xc1\x00\x01.'
+- 0x00C: d833f6ff  |  �3��  |  b'\xd83\xf6\xff'
++ 0x00C: d813f6ff  |  �.��  |  b'\xd8\x13\xf6\xff'
+  0x010: ffffffff  |  ����  |  b'\xff\xff\xff\xff'
+"""
+
 Gamedata = Struct(_unk=Bytes(33120), slots=RawCopy(Savefile)[3], _unk2=Bytes(149888))
