@@ -131,12 +131,19 @@ class Constructed:
                 print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
                 self.view(key, per_line, hide_empty, **kwargs)
 
-    def _pprint(self, key: str, val):
+    def _pprint(self, key: str, val, sort_keys: bool = True):
         if isinstance(val, dict):
-            val = pseudo_json(val)
+            val = pseudo_json(val, sort_keys=sort_keys)
         print(f'{colored(key, 14)}: {val}')
 
-    def pprint(self, unknowns: bool = False, keys: Collection[str] = None, binary: bool = False, **kwargs):
+    def pprint(
+        self,
+        unknowns: bool = False,
+        keys: Collection[str] = None,
+        binary: bool = False,
+        sort_keys: bool = True,
+        **kwargs,
+    ):
         last_was_view = False
         for key in self._offsets_and_sizes:
             if keys and key not in keys:
@@ -154,7 +161,7 @@ class Constructed:
                 else:
                     if last_was_view:
                         print()
-                    self._pprint(key, val)
+                    self._pprint(key, val, sort_keys=sort_keys)
                     last_was_view = False
 
 
@@ -241,12 +248,12 @@ class SaveFile(Constructed, construct=Savefile):
     def garden(self) -> 'Garden':
         return Garden(self)
 
-    def _pprint(self, key: str, val):
+    def _pprint(self, key: str, val, sort_keys: bool = True):
         if key == 'garden':
             print(f'{colored(key, 14)}:')
             self.garden.show(prefix='    ')
         else:
-            super()._pprint(key, val)
+            super()._pprint(key, val, sort_keys)
 
 
 class Garden:

@@ -48,6 +48,7 @@ def parser():
     view_attr.add_argument('attr', nargs='*', help='The attribute(s) to view')
     view_attr.add_argument('--binary', '-b', action='store_true', help='Show the binary version, even if a higher level representation is available')
     view_attr.add_argument('--unknowns', '-u', action='store_true', help='Include unknown fields in output')
+    view_attr.add_argument('--no_sort', '-S', dest='sort_keys', action='store_false', help='Do not sort keys in output')
     view_bin_group = view_attr.add_argument_group('Binary Data Options', 'Options that apply when viewing binary data')
     view_bin_group.add_argument('--per_line', '-L', type=int, default=40, help='Number of bytes to print per line')
     view_bin_group.add_argument('--hide_empty', '-e', type=int, default=10, help='Line threshold above which repeated lines of zeros will be hidden')
@@ -96,6 +97,7 @@ def view(game_data: GameData, item: str, slot_num: int, args):
             binary=args.binary,
             per_line=args.per_line,
             hide_empty=args.hide_empty,
+            sort_keys=args.sort_keys,
             struct=repr,
         )
     else:
