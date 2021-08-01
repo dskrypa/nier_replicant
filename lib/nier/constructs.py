@@ -21,6 +21,7 @@ from construct import ValidationError, RawCopy, singleton
 
 from .constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, FERTILIZER, SWORDS_1H, SWORDS_2H, SPEARS
 from .constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
+# from .constants import TUTORIALS, QUEST_STARTED_A, QUEST_FINISHED_A, QUEST_STARTED_B, QUEST_FINISHED_B
 
 log = logging.getLogger(__name__)
 __all__ = ['Savefile', 'Gamedata', 'Plot']
@@ -92,16 +93,44 @@ class Weapon(Adapter):  # noqa
         return SPEARS.index(name) + 40
 
 
+class Quests(Adapter):  # noqa
+    def __init__(self, bits, start_map, end_map):
+        subcon = BitsSwapped(BitStruct(*(i / Flag for i in range(bits))))  # noqa
+        super().__init__(subcon)
+        self._start_map = start_map
+        self._end_map = end_map
+
+    def _decode(self, obj, context, path) -> tuple[dict[str, tuple[bool, bool]], dict[int, bool]]:
+        started, completed, unknown = {}, {}, {}
+        for num, val in obj.items():
+            try:
+                name = self._start_map[num]
+            except KeyError:
+                try:
+                    name = self._end_map[num]
+                except KeyError:
+                    unknown[num] = val
+                else:
+                    completed[name] = val
+            else:
+                started[name] = val
+
+        return {name: (val, completed[name]) for name, val in started.items()}, unknown
+
+    # def _encode(self, obj, context, path):  # TODO: Implement
+    #     return obj
+
+
 def _struct_parts(sections, unknowns, struct=Int8ul):
     for i, (unknown, section) in enumerate(zip(unknowns, sections)):
         yield from (v / struct for v in section)
         if unknown:
             yield f'_unk{i}' / Bytes(unknown)
 
+
 # endregion
 
 # region Save Slot Fields
-
 
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
 Ability = Enum(Int32ul, **{k: i for i, k in enumerate(ABILITIES)})
@@ -172,7 +201,10 @@ Savefile = Struct(
     _unk13=Bytes(4),  # zeros
     weapons=Weapons,
     _unk14=Bytes(225),
+
+    # quests=Quests(512, QUEST_STARTED_A, QUEST_FINISHED_A),
     quests=Int32ul[16],
+
     _unk15=Bytes(312),
     words=WordsLearned,
     _unk16a=Bytes(16),
@@ -182,11 +214,16 @@ Savefile = Struct(
     ability_words_b=AbilityWords,
     weapon_words_b=WeaponWords,
     _unk16c=Bytes(17),
-    tutorials=Int32ul[3],
+
+    tutorials=Int32ul[3],  # TODO: Enum
+
     _unk17a=Bytes(412),
-    garden=Garden,
+    garden=Garden,  # 360
     _unk17b=Bytes(332),
-    quest=Int32ul,
+
+    # quests_b=Quests(32, QUEST_STARTED_B, QUEST_FINISHED_B),
+    quests_b=Int32ul,
+
     _unk18a1=Bytes(240),
     _unk18a2=Bytes(240),  # zeros
     _unk18a3=Bytes(40),
