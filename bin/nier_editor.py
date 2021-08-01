@@ -43,6 +43,15 @@ def parser():
     edit_items.add_argument('name', help='Item name')
     edit_items.add_argument('quantity', type=int, help='Number of the given item to set')
 
+    view_attr = view_parser.add_subparser('item', 'attrs', 'View SaveFile attributes')
+    _parsers.append(view_attr)
+    view_attr.add_argument('attr', nargs='*', help='The attribute(s) to view')
+    view_attr.add_argument('--binary', '-b', action='store_true', help='Show the binary version, even if a higher level representation is available')
+    view_attr.add_argument('--unknowns', '-u', action='store_true', help='Include unknown fields in output')
+    view_bin_group = view_attr.add_argument_group('Binary Data Options', 'Options that apply when viewing binary data')
+    view_bin_group.add_argument('--per_line', '-L', type=int, default=40, help='Number of bytes to print per line')
+    view_bin_group.add_argument('--hide_empty', '-e', type=int, default=10, help='Line threshold above which repeated lines of zeros will be hidden')
+
     for _parser in _parsers:
         _parser.add_argument('--path', '-p', help='Save file path')
         _parser.add_argument('--slot', '-s', type=int, choices=(1, 2, 3), help='Save slot to load/modify')
@@ -78,6 +87,17 @@ def view(game_data: GameData, item: str, slot_num: int, args):
         if len(slots) > 1:
             raise ValueError('--slot is required for viewing items')
         slots[0].pprint(keys=set(ITEM_SECTIONS))
+    elif item == 'attrs':
+        if len(slots) > 1:
+            raise ValueError('--slot is required for viewing attributes')
+        slots[0].pprint(
+            args.unknowns,
+            args.attr,
+            binary=args.binary,
+            per_line=args.per_line,
+            hide_empty=args.hide_empty,
+            struct=repr,
+        )
     else:
         raise ValueError(f'Unexpected {item=} to view')
 

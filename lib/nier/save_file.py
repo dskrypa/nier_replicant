@@ -136,22 +136,26 @@ class Constructed:
             val = pseudo_json(val)
         print(f'{colored(key, 14)}: {val}')
 
-    def pprint(self, unknowns: bool = False, keys: Collection[str] = None, **kwargs):
+    def pprint(self, unknowns: bool = False, keys: Collection[str] = None, binary: bool = False, **kwargs):
         last_was_view = False
         for key in self._offsets_and_sizes:
             if keys and key not in keys:
                 continue
-            val = self[key]
-            if isinstance(val, bytes):
-                if unknowns or not key.startswith('_unk'):
-                    print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
-                    self.view(key, **kwargs)
-                    last_was_view = True
+            if binary:
+                print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
+                self.view(key, **kwargs)
             else:
-                if last_was_view:
-                    print()
-                self._pprint(key, val)
-                last_was_view = False
+                val = self[key]
+                if isinstance(val, bytes):
+                    if unknowns or not key.startswith('_unk'):
+                        print(colored('\n{}  {}  {}'.format('=' * 30, key, '=' * 30), 14))
+                        self.view(key, **kwargs)
+                        last_was_view = True
+                else:
+                    if last_was_view:
+                        print()
+                    self._pprint(key, val)
+                    last_was_view = False
 
 
 class GameData(Constructed, construct=Gamedata):
