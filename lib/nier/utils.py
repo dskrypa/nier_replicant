@@ -111,6 +111,10 @@ class PseudoJsonEncoder(json.JSONEncoder):
             return o.decode('utf-8', 'replace')
 
 
+def pseudo_json(data) -> str:
+    return json.dumps(data, cls=PseudoJsonEncoder, sort_keys=True, indent=4, ensure_ascii=False)
+
+
 def unified_byte_diff(
     a: bytes, b: bytes, n: int = 3, lineterm: str = '', color: bool = True, per_line: int = 20, **kwargs
 ):

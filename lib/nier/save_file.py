@@ -4,7 +4,6 @@ Higher level classes for working with NieR Replicant ver.1.22474487139... save f
 :author: Doug Skrypa
 """
 
-import json
 import logging
 import shutil
 from datetime import datetime, timedelta
@@ -17,7 +16,7 @@ from construct.lib.containers import ListContainer, Container
 
 from .constants import MAP_ZONE_MAP, SEED_RESULT_MAP
 from .constructs import Gamedata, Savefile, Plot
-from .utils import to_hex_and_str, PseudoJsonEncoder, colored, unified_byte_diff, cached_classproperty, unique_path
+from .utils import to_hex_and_str, pseudo_json, colored, unified_byte_diff, cached_classproperty, unique_path
 
 __all__ = ['GameData', 'SaveFile']
 log = logging.getLogger(__name__)
@@ -86,8 +85,7 @@ class Constructed:
                         own_slot.diff(other_slot, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=keys)
                 elif not byte_diff and own_val != own_raw and not isinstance(own_val, (float, int, str)):
                     print(colored(f'@@ {key} @@', 6))
-                    a = json.dumps(own_val, cls=PseudoJsonEncoder, sort_keys=True, indent=4).splitlines()
-                    b = json.dumps(other[key], cls=PseudoJsonEncoder, sort_keys=True, indent=4).splitlines()
+                    a, b = pseudo_json(own_val).splitlines(), pseudo_json(other[key]).splitlines()
                     for i, line in enumerate(unified_diff(a, b, n=2, lineterm='')):
                         if line.startswith('+'):
                             if i > 1:
@@ -135,7 +133,7 @@ class Constructed:
 
     def _pprint(self, key: str, val):
         if isinstance(val, dict):
-            val = json.dumps(val, sort_keys=True, indent=4, cls=PseudoJsonEncoder)
+            val = pseudo_json(val)
         print(f'{colored(key, 14)}: {val}')
 
     def pprint(self, unknowns: bool = False, keys: Collection[str] = None, **kwargs):
