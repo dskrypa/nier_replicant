@@ -190,13 +190,17 @@ class GameData(Constructed, construct=Gamedata):
         path = path or self._path
         if not path:
             raise ValueError(f'A path is required to save {self}')
+
+        data = self._construct.build(self._build())  # Prevent creating an empty file if an exception is raised
+
         if backup and path.exists():
             bkp_path = unique_path(path.parent, path.name, '.bkp')
             log.info(f'Creating backup: {bkp_path.as_posix()}')
             shutil.copy(path, bkp_path)
+
         log.info(f'Saving {path.as_posix()}')
         with Path(path).expanduser().open('wb') as f:
-            f.write(self._construct.build(self._build()))
+            f.write(data)
 
     def __repr__(self) -> str:
         return '<GameData[\n{}]>'.format(''.join(map('    {!r}\n'.format, self.slots)))
@@ -347,7 +351,7 @@ def _build(obj):
     if isinstance(obj, ListContainer):
         return [_build(li) for li in obj]
     elif isinstance(obj, Container):
-        if set(obj) == {'offset1', 'length', 'offset2', 'data', 'value'}:
+        if set(obj) == {'offset1', 'length', 'offset2', 'data', 'value'}:  # RawCopy
             return {'value': _build(obj.value)}
         return {key: _build(val) for key, val in obj.items() if key != '_io'}
     else:
@@ -358,7 +362,7 @@ def _clean(obj):
     if isinstance(obj, ListContainer):
         return [_clean(li) for li in obj]
     elif isinstance(obj, Container):
-        if set(obj) == {'offset1', 'length', 'offset2', 'data', 'value'}:
+        if set(obj) == {'offset1', 'length', 'offset2', 'data', 'value'}:  # RawCopy
             return _clean(obj.value)
         return {key: _build(val) for key, val in obj.items() if key not in ('_io', '_flagsenum')}
     else:
