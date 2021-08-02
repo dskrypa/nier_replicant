@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 def parser():
     parser = ArgParser(description='Nier Replicant ver.1.22474487139... Save File Editor')
+    # region View/Edit Options
     view_parser = parser.add_subparser('action', 'view', 'View information from a save file')
     edit_parser = parser.add_subparser('action', 'edit', 'Edit information in a save file')
 
@@ -57,6 +58,29 @@ def parser():
         _parser.add_argument('--path', '-p', help='Save file path')
         _parser.add_argument('--slot', '-s', type=int, choices=(1, 2, 3), help='Save slot to load/modify')
         _parser.add_argument('--verbose', '-v', action='store_true', help='Increase logging verbosity')
+
+    # endregion
+    # region Diff Options
+    diff_parser = parser.add_subparser('action', 'diff', 'View the difference between 2 save files/slots')
+    diff_files = diff_parser.add_subparser('item', 'files', 'View the difference between 2 save files')
+    diff_files.add_argument('paths', nargs=2, help='The save files to process')
+    diff_files.add_argument('--slot1', '-s1', type=int, choices=(1, 2, 3), help='Save slot in file 1. If specified, must also specify --slot2/-s2 (default: full file diff)')
+    diff_files.add_argument('--slot2', '-s2', type=int, choices=(1, 2, 3), help='Save slot in file 2. If specified, must also specify --slot1/-s1 (default: full file diff)')
+    diff_files.add_argument('--verbose', '-v', action='store_true', help='Increase logging verbosity')
+
+    diff_slots = diff_parser.add_subparser('item', 'saves', 'View the difference between 2 save slots')
+    diff_slots.add_argument('slots', nargs=2, type=int, choices=(1, 2, 3), help='The save slots/entries to compare')
+    diff_slots.add_argument('--path', '-p', help='Save file path')
+    diff_slots.add_argument('--verbose', '-v', action='store_true', help='Increase logging verbosity')
+
+    for _parser in (diff_files, diff_slots):
+        _group = _parser.add_argument_group('Diff Options')
+        _group.add_argument('--per_line', '-L', type=int, default=40, help='Number of bytes to print per line (binary data only)')
+        _group.add_argument('--binary', '-b', action='store_true', help='Show the binary version, even if a higher level representation is available')
+        _fields = _group.add_argument_group('Field Options').add_mutually_exclusive_group()
+        _fields.add_argument('--keys', '-k', nargs='+', help='Specific keys/attributes to include in the diff (default: all)')
+        _fields.add_argument('--unknowns', '-u', action='store_true', help='Only show unknown fields in output')
+    # endregion
     return parser
 
 
@@ -65,11 +89,14 @@ def main():
     log_fmt = '%(asctime)s %(levelname)s %(name)s %(lineno)d %(message)s' if args.verbose else '%(message)s'
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format=log_fmt)
 
-    game_data = GameData.load(get_path(args.path))
-    if args.action == 'view':
-        view(game_data, args.item, args.slot, args)
-    elif args.action == 'edit':
-        edit(game_data, args.item, args.slot, args)
+    if (action := args.action) in ('view', 'edit'):
+        game_data = GameData.load(get_path(args.path))
+        if action == 'view':
+            view(game_data, args.item, args.slot, args)
+        elif action == 'edit':
+            edit(game_data, args.item, args.slot, args)
+    elif action == 'diff':
+        diff(args.item, args)
     else:
         raise ValueError(f'Unexpected action={args.action!r}')
 
@@ -132,6 +159,27 @@ def edit(game_data: GameData, item: str, slot_num: int, args):
 
     slot['save_time'] = datetime.now()
     game_data.save()
+
+
+def diff(item: str, args):
+    if item == 'files':
+        obj_a, obj_b = GameData.load(get_path(args.paths[0])), GameData.load(get_path(args.paths[1]))
+        if args.slot1 or args.slot2:
+            if not (args.slot1 and args.slot2):
+                raise ValueError('Either both --slot1/-s1 and --slot2/-s2 must be provided, or neither may be provided')
+            obj_a, obj_b = obj_a[args.slot1 - 1], obj_b[args.slot2 - 1]
+    elif item == 'saves':
+        game_data = GameData.load(get_path(args.path))
+        obj_a, obj_b = game_data[args.slots[0] - 1], game_data[args.slots[1] - 1]
+    else:
+        raise ValueError(f'Unexpected {item=} to compare')
+
+    if args.unknowns:
+        keys = {k for k in obj_a._offsets_and_sizes if k.startswith('_unk')}
+    else:
+        keys = set(args.keys) if args.keys else None
+
+    obj_a.diff(obj_b, per_line=args.per_line, byte_diff=args.binary, keys=keys)
 
 
 def get_path(path):
