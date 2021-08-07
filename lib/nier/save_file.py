@@ -283,31 +283,44 @@ class Garden:
         print('\n'.join(row_fmt.format(*row) for row in zip(*columns)))
 
     def update(
-        self, dt: datetime = None, hours: int = None, fertilizer: Union[str, int] = None, water: int = None, **kwargs
+        self,
+        dt: datetime = None,
+        hours: int = None,
+        fertilizer: Union[str, int] = None,
+        water: int = None,
+        plots: Collection[int] = None,
+        **kwargs
     ):
         if dt or hours:
-            self.set_plant_times(dt, hours)
+            self.set_plant_times(dt, hours, plots=plots)
         if fertilizer or fertilizer == 0:
-            self.set_fertilizer(fertilizer, **kwargs)
+            self.set_fertilizer(fertilizer, plots=plots, **kwargs)
         if water:
-            self.set_water(water)
+            self.set_water(water, plots=plots)
 
-    def set_plant_times(self, dt: datetime = None, hours: int = None):
+    def set_plant_times(self, dt: datetime = None, hours: int = None, plots: Collection[int] = None):
         """
         Sets the plant time for all seeds in this garden.  Does not modify plots where a seed has not been planted.
 
         :param dt: The specific time to set as the time that all seeds were planted.  Mutually exclusive with ``hours``.
         :param hours: Number of hours earlier than the current time to set as the time that all seeds were planted.
           Mutually exclusive with ``dt``.
+        :param plots: Specific plots for which the plant time should be set (default: all)
         """
         if (dt and hours) or (not dt and not hours):
             raise ValueError('set_plant_times() requires ONE of dt or hours')
-        dt = dt or (datetime.now() - timedelta(hours=hours))
-        for plot in self:
-            if plot._parsed.seed != 255:
+        dt = dt or (datetime.now() - timedelta(hours=hours)).replace(microsecond=0)
+        for i, plot in enumerate(self):
+            if (not plots or i in plots) and plot._parsed.seed != 255:
                 plot._parsed.time = dt
 
-    def set_fertilizer(self, fertilizer: Union[str, int], only_planted: bool = False, only_unfertilized: bool = False):
+    def set_fertilizer(
+        self,
+        fertilizer: Union[str, int],
+        only_planted: bool = False,
+        only_unfertilized: bool = False,
+        plots: Collection[int] = None,
+    ):
         """
         Sets the fertilizer used in all garden plots, regardless of whether a seed has been planted in that plot.
 
@@ -317,18 +330,18 @@ class Garden:
           for all plots)
         :param only_unfertilized: Only set the specified fertilizer for plots that have no fertilizer already in use
           (default: set for all plots)
+        :param plots: Specific plots that should be fertilized (default: all)
         """
-        for plot in self:
-            if only_planted and plot._parsed.seed == 255:
+        for i, plot in enumerate(self):
+            if (only_planted and plot._parsed.seed == 255) or (only_unfertilized and plot._parsed.fertilizer != 0):
                 continue
-            if only_unfertilized and plot._parsed.fertilizer != 0:
-                continue
-            plot._parsed.fertilizer = fertilizer
+            elif not plots or i in plots:
+                plot._parsed.fertilizer = fertilizer
 
-    def set_water(self, water: int):
+    def set_water(self, water: int, plots: Collection[int] = None):
         kwargs = {'first': water >= 1, 'second': water >= 2}
-        for plot in self:
-            if plot._parsed.seed != 255:
+        for i, plot in enumerate(self):
+            if plot._parsed.seed != 255 and (not plots or i in plots):
                 for key, val in kwargs.items():
                     setattr(plot._parsed.water, key, val)
 

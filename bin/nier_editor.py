@@ -42,6 +42,7 @@ def parser():
     fert_group.add_argument('--only_planted', '-P', action='store_true', help='Only set the specified fertilizer for plots with a seed planted (default: all)')
     fert_group.add_argument('--only_unfertilized', '-F', action='store_true', help='Only set the specified fertilizer for plots with no fertilizer already in place (default: all)')
     edit_garden.add_argument('--water', '-w', type=int, choices=(1, 2), help='Number of times to water')
+    edit_garden.add_argument('--plots', '-L', type=int, nargs='+', choices=range(15), help='Specific plots to modify (default: all)')
 
     view_items, edit_items = _view_and_edit('items')
     edit_items.add_argument('name', help='Item name')
@@ -80,7 +81,7 @@ def parser():
         _group = _parser.add_argument_group('Diff Options')
         _group.add_argument('--per_line', '-L', type=int, default=40, help='Number of bytes to print per line (binary data only)')
         _group.add_argument('--binary', '-b', action='store_true', help='Show the binary version, even if a higher level representation is available')
-        _fields = _group.add_argument_group('Field Options').add_mutually_exclusive_group()
+        _fields = _parser.add_argument_group('Field Options').add_mutually_exclusive_group()
         _fields.add_argument('--keys', '-k', nargs='+', help='Specific keys/attributes to include in the diff (default: all)')
         _fields.add_argument('--unknowns', '-u', action='store_true', help='Only show unknown fields in output')
     # endregion
@@ -141,7 +142,7 @@ def edit(game_data: GameData, item: str, slot_num: int, args):
     if item == 'garden':
         kwargs = {'only_unfertilized': args.only_unfertilized, 'only_planted': args.only_planted}
         fertilizer = FERTILIZER_ALIASES.get(args.fertilizer)
-        slot.garden.update(args.time, args.hours, fertilizer, args.water, **kwargs)
+        slot.garden.update(args.time, args.hours, fertilizer, args.water, plots=args.plots, **kwargs)
         log.info('Updated garden:')
         slot.garden.show()
     elif item == 'items':
