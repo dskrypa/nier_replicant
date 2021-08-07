@@ -229,6 +229,8 @@ Weapons = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), Weap
 WeaponWords = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WordEquipped))  # noqa
 AbilityWords = Struct(*(a / WordEquipped for a in ABILITIES[1:]))
 FishRecordStates = Struct(*(f / FishRecordState for f in FISH_RECORDS))
+FishRecordSizesCm = Struct(*(f / Float64l for f in FISH_RECORDS))
+FishRecordWeightsG = Struct(*(f / Float64l for f in FISH_RECORDS))
 
 # endregion
 
@@ -279,7 +281,11 @@ Savefile = Struct(
     weapon_words_b=WeaponWords,
     _unk16c=Bytes(17),
     tutorials=Tutorials,  # 12  # Whether a given tutorial has been unlocked
-    _unk17a=Bytes(412),  # Seems to contain Tutorial new/viewed
+    _unk17a1=Bytes(68),  # Seems to contain Tutorial new/viewed
+    fishing_record_sizes=FishRecordSizesCm,  # / 2.54 => inches
+    _unk17a2=Bytes(72),
+    fishing_record_weights=FishRecordWeightsG,  # * .00220462 => lbs
+    _unk17a3=Bytes(32),
     garden=Garden,  # 360
     _unk17b1=Bytes(189),
     fishing_record_states=FishRecordStates,
