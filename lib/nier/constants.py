@@ -302,6 +302,10 @@ FISH = [
     'Sardine', 'Carp', 'Blowfish', 'Bream', 'Shark', 'Blue Marlin', 'Dunkleosteus', 'Rainbow Trout', 'Black Bass',
     'Giant Catfish', 'Royal Fish', 'Hyneria', 'Sandfish', 'Rhizodont', 'Shaman Fish'
 ]
+FISH_RECORDS = [
+    'Sardine', 'Blowfish', 'Bream', 'Shark', 'Blue Marlin', 'Dunkleosteus', 'Carp', 'Rainbow Trout', 'Black Bass',
+    'Giant Catfish', 'Royal Fish', 'Hyneria', 'Sandfish', 'Rhizodont', 'Shaman Fish'
+]
 
 RAW_MATERIALS = {
     'fished': ['Aquatic Plant', 'Deadwood', 'Rusty Bucket', 'Empty Can'],

@@ -21,7 +21,7 @@ from construct import ValidationError, RawCopy, singleton, Bit, EnumIntegerStrin
 
 from .constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, FERTILIZER, SWORDS_1H, SWORDS_2H, SPEARS
 from .constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
-from .constants import TUTORIALS, QUESTS, QUESTS_NEW_1
+from .constants import TUTORIALS, QUESTS, QUESTS_NEW_1, FISH_RECORDS
 
 log = logging.getLogger(__name__)
 __all__ = ['Savefile', 'Gamedata', 'Plot']
@@ -202,6 +202,7 @@ Tutorials = BitsSwapped(BitStruct(*((n if n else f'_tutorial_{i}') / Flag for i,
 WordsLearned = BitsSwapped(BitStruct(*((n if n else f'_word_{i}') / Flag for i, n in enumerate(WORDS))))
 WordEquipped = Enum(Int8ul, **({k: i for i, k in enumerate(WORDS)} | {'None': 255}))
 WeaponState = Enum(Int8ul, **{'Level 1': 0, 'Level 2': 1, 'Level 3': 2, 'Level 4': 3, 'Not Owned': 255})
+FishRecordState = Enum(Int8ul, new=1, viewed=0)
 
 KeyItems = Struct(*(v / Int8ul for v in KEY_ITEMS))
 Documents = Struct(*(v / Int8ul for v in DOCUMENTS))
@@ -227,6 +228,7 @@ RawMaterials = Struct(*_struct_parts(RAW_MATERIALS.values(), (3, 4, 5, 4, 1, 5, 
 Weapons = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WeaponState))  # noqa
 WeaponWords = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WordEquipped))  # noqa
 AbilityWords = Struct(*(a / WordEquipped for a in ABILITIES[1:]))
+FishRecordStates = Struct(*(f / FishRecordState for f in FISH_RECORDS))
 
 # endregion
 
@@ -279,7 +281,9 @@ Savefile = Struct(
     tutorials=Tutorials,  # 12  # Whether a given tutorial has been unlocked
     _unk17a=Bytes(412),  # Seems to contain Tutorial new/viewed
     garden=Garden,  # 360
-    _unk17b=Bytes(332),
+    _unk17b1=Bytes(189),
+    fishing_record_states=FishRecordStates,
+    _unk17b2=Bytes(128),
     quests_b=Quests(32, QUESTS_NEW_1),
     _unk18a1=Bytes(240),
     _unk18a2=Bytes(240),  # zeros

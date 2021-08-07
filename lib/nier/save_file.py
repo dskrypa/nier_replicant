@@ -6,6 +6,7 @@ Higher level classes for working with NieR Replicant ver.1.22474487139... save f
 
 import logging
 import shutil
+import struct
 from datetime import datetime, timedelta
 from difflib import unified_diff
 from functools import cached_property
@@ -164,6 +165,27 @@ class Constructed:
                         print()
                     self._pprint(key, val, sort_keys=sort_keys, unknowns=unknowns)
                     last_was_view = False
+
+    def find_number(self, value: Union[int, float], unknowns_only: bool = True):
+        formats = {
+            'b': ('int8', 1), 'h': ('int16', 2), 'i': ('int32', 4), 'q': ('int64', 8),
+            'B': ('uint8', 1), 'H': ('uint16', 2), 'I': ('unit32', 4), 'Q': ('uint64', 8),
+            'e': ('float16', 2), 'f': ('float32', 4), 'd': ('float64', 8),
+        }
+        for endian in '<>':
+            for f, (name, width) in formats.items():
+                try:
+                    byte_val = struct.pack(f'{endian}{f}', value)
+                except struct.error:
+                    pass
+                else:
+                    # log.debug(f'Searching for {byte_val=}')
+                    print(f'Searching for {byte_val=}')
+                    for key, data in self.raw_items():
+                        if byte_val in data:
+                        # if (not unknowns_only or key.startswith('_unk')) and byte_val in data:
+                            # log.info(f'Found {value=} in {key=} as {name} with {byte_val=}')
+                            print(f'Found {value=} in {key=} as {name} with {byte_val=}')
 
 
 class GameData(Constructed, construct=Gamedata):
