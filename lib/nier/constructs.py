@@ -79,9 +79,18 @@ class Weapon(Adapter):  # noqa
             return SWORDS_1H[index]
         elif index < 40:
             return SWORDS_2H[index - 20]
-        return SPEARS[index - 40]
+        try:
+            return SPEARS[index - 40]
+        except IndexError:
+            if index == (1 << 32) - 1:
+                return None
+            else:
+                log.error(f'Error decoding weapon with {index=} @ {path=}')
+                raise
 
     def _encode(self, name: Optional[str], context, path) -> int:
+        if name is None:
+            return (1 << 32) - 1
         try:
             return SWORDS_1H.index(name)
         except ValueError:
