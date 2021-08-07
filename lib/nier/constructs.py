@@ -17,7 +17,7 @@ from typing import Optional
 
 from construct import Struct, Int8ul, Int32sl, Int32ul, Float64l, Float32l, PaddedString, Bytes, Int16ul
 from construct import Enum, FlagsEnum, Sequence, Adapter, BitStruct, Flag, BitsSwapped, ExprValidator, Subconstruct
-from construct import ValidationError, RawCopy, singleton, Bit
+from construct import ValidationError, RawCopy, singleton, Bit, EnumIntegerString
 
 from .constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, FERTILIZER, SWORDS_1H, SWORDS_2H, SPEARS
 from .constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
@@ -155,6 +155,43 @@ def _struct_parts(sections, unknowns, struct=Int8ul):
             yield f'_unk{i}' / Bytes(unknown)
 
 
+class EnumIntStr(EnumIntegerString):
+    def __eq__(self, other):
+        if isinstance(other, (float, int)):
+            return self.intvalue == other  # noqa
+        return super().__eq__(other)
+
+    def __ne__(self, other):
+        if isinstance(other, (float, int)):
+            return self.intvalue != other  # noqa
+        return super().__ne__(other)
+
+    def __hash__(self):
+        return str.__hash__(self)
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}.new({self.intvalue}, {str.__repr__(self)})'  # noqa
+
+    @classmethod
+    def new(cls, intvalue, stringvalue):
+        # Had to override because original is a staticmethod instead of a classmethod
+        ret = cls(stringvalue)
+        ret.intvalue = intvalue
+        return ret
+
+
+class IntEnum(Enum):  # noqa
+    """Overrides encmapping & decmapping attrs to use more permissive :class:`EnumIntStr`"""
+    def __init__(self, subcon, *merge, **mapping):
+        Adapter.__init__(self, subcon)
+        for enum in merge:
+            for enumentry in enum:
+                mapping[enumentry.name] = enumentry.value
+        self.encmapping = {EnumIntStr.new(v, k): v for k, v in mapping.items()}
+        self.decmapping = {v: EnumIntStr.new(v, k) for k, v in mapping.items()}
+        self.ksymapping = {v: k for k, v in mapping.items()}
+
+
 # endregion
 
 # region Save Slot Fields
@@ -171,13 +208,13 @@ Documents = Struct(*(v / Int8ul for v in DOCUMENTS))
 Maps = Struct(*(v / Int8ul for v in MAPS))
 
 Plot = Struct(
-    seed=Enum(Int8ul, **({k: i for i, k in enumerate(PLANTS)} | {'None': 255})),
+    seed=IntEnum(Int8ul, **({k: i for i, k in enumerate(PLANTS)} | {'None': 255})),
     _unk0=Bytes(3),
-    fertilizer=Enum(Int8ul, **{k: i for i, k in enumerate(FERTILIZER)}),
+    fertilizer=IntEnum(Int8ul, **{k: i for i, k in enumerate(FERTILIZER)}),
     _unk1=Bytes(3),
     water=FlagsEnum(Int8ul, first=1, second=2),
     _unk2=Bytes(3),
-    direction=Enum(Float32l, East=0, North=90, West=180, South=270),
+    direction=IntEnum(Float32l, East=0, North=90, West=180, South=270),
     time=DateTime,
     _unk3=Bytes(1),
 )

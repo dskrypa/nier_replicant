@@ -282,11 +282,13 @@ class Garden:
         row_fmt = '{}{{:>{}s}}  {{:>{}s}}  {{:>{}s}}'.format(prefix, *(max(map(len, col)) for col in columns))
         print('\n'.join(row_fmt.format(*row) for row in zip(*columns)))
 
-    def update(self, dt: datetime = None, hours: int = None, fertilizer: Union[str, int] = None, water: int = None):
+    def update(
+        self, dt: datetime = None, hours: int = None, fertilizer: Union[str, int] = None, water: int = None, **kwargs
+    ):
         if dt or hours:
             self.set_plant_times(dt, hours)
         if fertilizer or fertilizer == 0:
-            self.set_fertilizer(fertilizer)
+            self.set_fertilizer(fertilizer, **kwargs)
         if water:
             self.set_water(water)
 
@@ -299,20 +301,28 @@ class Garden:
           Mutually exclusive with ``dt``.
         """
         if (dt and hours) or (not dt and not hours):
-            raise ValueError(f'set_plant_times() requires ONE of dt or hours')
+            raise ValueError('set_plant_times() requires ONE of dt or hours')
         dt = dt or (datetime.now() - timedelta(hours=hours))
         for plot in self:
             if plot._parsed.seed != 255:
                 plot._parsed.time = dt
 
-    def set_fertilizer(self, fertilizer: Union[str, int]):
+    def set_fertilizer(self, fertilizer: Union[str, int], only_planted: bool = False, only_unfertilized: bool = False):
         """
         Sets the fertilizer used in all garden plots, regardless of whether a seed has been planted in that plot.
 
         :param fertilizer: One of ['None', 'Speed Fertilizer', 'Flowering Fertilizer', 'Bounty Fertilizer'] or an
           integer between 0-3, inclusive.
+        :param only_planted: Only set the specified fertilizer for plots have have a seed planted already (default: set
+          for all plots)
+        :param only_unfertilized: Only set the specified fertilizer for plots that have no fertilizer already in use
+          (default: set for all plots)
         """
         for plot in self:
+            if only_planted and plot._parsed.seed == 255:
+                continue
+            if only_unfertilized and plot._parsed.fertilizer != 0:
+                continue
             plot._parsed.fertilizer = fertilizer
 
     def set_water(self, water: int):

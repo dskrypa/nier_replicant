@@ -9,7 +9,7 @@ import _venv  # This will activate the venv, if it exists and is not already act
 import logging
 from datetime import datetime
 
-from nier.constants import FERTILIZER
+from nier.constants import FERTILIZER, FERTILIZER_ALIASES
 from nier.save_file import GameData
 from nier.utils import ArgParser, colored
 
@@ -37,7 +37,10 @@ def parser():
     gt_group = edit_garden.add_argument_group('Time Options').add_mutually_exclusive_group()
     gt_group.add_argument('--time', '-t', metavar='YYYY-MM-DD HH:MM:SS', type=datetime.fromisoformat, help='A specific time to set as the plant time')
     gt_group.add_argument('--hours', '-H', type=int, help='Set the plant time to be the given number of hours earlier than now')
-    edit_garden.add_argument('--fertilizer', '-f', choices=FERTILIZER, help='The fertilizer to use')
+    edit_garden.add_argument('--fertilizer', '-f', choices=FERTILIZER_ALIASES.keys(), help='The fertilizer to use')
+    fert_group = edit_garden.add_argument_group('Fertilizer Options')
+    fert_group.add_argument('--only_planted', '-P', action='store_true', help='Only set the specified fertilizer for plots with a seed planted (default: all)')
+    fert_group.add_argument('--only_unfertilized', '-F', action='store_true', help='Only set the specified fertilizer for plots with no fertilizer already in place (default: all)')
     edit_garden.add_argument('--water', '-w', type=int, choices=(1, 2), help='Number of times to water')
 
     view_items, edit_items = _view_and_edit('items')
@@ -136,7 +139,9 @@ def edit(game_data: GameData, item: str, slot_num: int, args):
         raise ValueError('--slot is required for editing')
     slot = game_data.slots[slot_num - 1]
     if item == 'garden':
-        slot.garden.update(args.time, args.hours, args.fertilizer, args.water)
+        kwargs = {'only_unfertilized': args.only_unfertilized, 'only_planted': args.only_planted}
+        fertilizer = FERTILIZER_ALIASES.get(args.fertilizer)
+        slot.garden.update(args.time, args.hours, fertilizer, args.water, **kwargs)
         log.info('Updated garden:')
         slot.garden.show()
     elif item == 'items':

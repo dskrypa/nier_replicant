@@ -261,6 +261,7 @@ PLANTS = [
     'White Moonflower Seed',    # 19 (unconfirmed)
 ]
 FERTILIZER = ['None', 'Speed Fertilizer', 'Flowering Fertilizer', 'Bounty Fertilizer']
+FERTILIZER_ALIASES = {f.split(maxsplit=1)[0]: f for f in FERTILIZER}
 
 # endregion
 
