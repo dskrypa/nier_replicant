@@ -18,7 +18,7 @@ from construct.lib.containers import ListContainer, Container
 from .constants import MAP_ZONE_MAP, SEED_RESULT_MAP
 from .constructs import Gamedata, Savefile, Plot
 from .utils import to_hex_and_str, pseudo_json, colored, unified_byte_diff, cached_classproperty, unique_path
-from .utils import without_unknowns
+from .utils import without_unknowns, pseudo_json_rows
 
 __all__ = ['GameData', 'SaveFile']
 log = logging.getLogger(__name__)
@@ -87,15 +87,18 @@ class Constructed:
                         own_slot.diff(other_slot, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=keys)
                 elif not byte_diff and own_val != own_raw and not isinstance(own_val, (float, int, str)):
                     print(colored(f'@@ {key} @@', 6))
-                    a, b = pseudo_json(own_val).splitlines(), pseudo_json(other[key]).splitlines()
-                    for i, line in enumerate(unified_diff(a, b, n=2, lineterm='')):
+                    func = pseudo_json_rows if key == 'quests' else pseudo_json
+                    a, b = func(own_val).splitlines(), func(other[key]).splitlines()
+                    for i, line in enumerate(unified_diff(a, b, n=2, lineterm=colored(f' {key}', 7))):
                         if line.startswith('+'):
                             if i > 1:
                                 print(colored(line, 2))
                         elif line.startswith('-'):
                             if i > 1:
                                 print(colored(line, 1))
-                        elif not line.startswith('@@ '):
+                        elif line.startswith('@@ '):
+                            print(colored(line, 3))
+                        else:
                             print(line)
                 elif max_len and isinstance(own_raw, bytes) and len(own_raw) > max_len:
                     unified_byte_diff(own_raw, other_raw, lineterm=key, struct=repr, per_line=per_line)

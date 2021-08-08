@@ -115,6 +115,19 @@ def pseudo_json(data, sort_keys: bool = True) -> str:
     return json.dumps(data, cls=PseudoJsonEncoder, sort_keys=sort_keys, indent=4, ensure_ascii=False)
 
 
+def pseudo_json_rows(data, sort_keys: bool = True) -> str:
+    last = len(data) - 1
+    rows = '\n'.join(
+        '    {}: {}{}'.format(
+            json.dumps(key, ensure_ascii=False),
+            json.dumps(val, cls=PseudoJsonEncoder, sort_keys=sort_keys, ensure_ascii=False),
+            ',' if i != last else ''
+        )
+        for i, (key, val) in enumerate(data.items())
+    )
+    return f'[\n{rows}\n]'
+
+
 def unified_byte_diff(
     a: bytes, b: bytes, n: int = 3, lineterm: str = '', color: bool = True, per_line: int = 20, **kwargs
 ):
