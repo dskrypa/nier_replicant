@@ -70,6 +70,7 @@ class Constructed:
         byte_diff: bool = False,
         keys: Collection[str] = None,
     ):
+        row_keys = {'quests', 'quests_b'}
         found_difference = False
         for key, own_raw in self.raw_items():
             if keys and key not in keys:
@@ -87,7 +88,7 @@ class Constructed:
                         own_slot.diff(other_slot, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=keys)
                 elif not byte_diff and own_val != own_raw and not isinstance(own_val, (float, int, str)):
                     print(colored(f'@@ {key} @@', 6))
-                    func = pseudo_json_rows if key == 'quests' else pseudo_json
+                    func = pseudo_json_rows if key in row_keys else pseudo_json
                     a, b = func(own_val).splitlines(), func(other[key]).splitlines()
                     for i, line in enumerate(unified_diff(a, b, n=2, lineterm=colored(f' {key}', 7))):
                         if line.startswith('+'):
@@ -100,7 +101,7 @@ class Constructed:
                             print(colored(line, 3))
                         else:
                             print(line)
-                elif max_len and isinstance(own_raw, bytes) and len(own_raw) > max_len:
+                elif max_len and isinstance(own_val, bytes) and len(own_raw) > max_len:
                     unified_byte_diff(own_raw, other_raw, lineterm=key, struct=repr, per_line=per_line)
                 else:
                     print(colored(f'@@ {key} @@', 6))

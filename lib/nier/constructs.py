@@ -268,13 +268,35 @@ Savefile = Struct(
     documents=Documents,
     _unk11=Bytes(168),  # zeros
     maps=Maps,
+
     _unk12=Bytes(264),  # :40=zeros; 40:84=content; 84:104=zeros; 104:108=content; 108:128=zeros; 128:=mostly 0xFF
+    # 0x08A (138): df -> 9f on recovery item new->viewed (strength capsule) [1 << 6]
+    # 0x08A: 9f -> 1f on recovery item new->viewed (magic drop) [1 << 7]
+    # 0x08B: 7f -> 6f on spirit capsule viewed [1 << 4]
+
+    # 0x08D: ff -> fd on speed fertilizer viewed
+    # 0x092: ff -> f7 on freesia viewed
+    # 0x092: f7 -> e7 on red moonflower viewed
+    # 0x093: ff -> fb on white moonflower viewed
+
+    # 0x094: ff -> df on lugworm viewed
+    # 0x096: df -> cf on blue marlin viewed
+
+    # 0x098: ef -> e7 on aquatic plant viewed
+    # 0x0A7: ff -> 7f on deer antler viewed
+
+    # 0x0A8: ff -> fe on moon key viewed (key item)
+    # 0x0E2 (226): c7 -> c5 on shadowlord's castle map viewed
+
     total_play_time=Float64l,
     _unk13=Bytes(4),  # zeros
     weapons=Weapons,
-    _unk14=Bytes(225),
+
+    _unk14=Bytes(225),  # Definitely contains something related to main story mission progress
+    # 0x1b: 8e -> 0e after viewing Labyrinth's Song (new->viewed)
+
     quests=Quests(512, QUESTS),
-    _unk15a=Bytes(280),
+    _unk15a=Bytes(280),  # Definitely contains something related to main story mission progress
     quest_viewed_states=QuestViewedStates,  # 11
     _unk15b=Bytes(21),
     words=WordsLearned,
@@ -286,7 +308,10 @@ Savefile = Struct(
     weapon_words_b=WeaponWords,
     _unk16c=Bytes(17),
     tutorials=Tutorials,  # 12  # Whether a given tutorial has been unlocked
+
     _unk17a1=Bytes(68),  # Seems to contain Tutorial new/viewed
+    # 0x00D: 33 -> 13 on Tutorial "Weapon Quick Switching" New -> viewed
+
     fishing_record_sizes=FishRecordSizesCm,  # / 2.54 => inches
     _unk17a2=Bytes(72),
     fishing_record_weights=FishRecordWeightsG,  # * .00220462 => lbs
@@ -296,25 +321,19 @@ Savefile = Struct(
     fishing_record_states=FishRecordStates,
     _unk17b2=Bytes(128),
     quests_b=Quests(32, QUESTS_NEW_1),
-    _unk18a1=Bytes(240),
+
+    _unk18a1=Bytes(240),  # May contain main story mission progress?
+    # 0xE5:0xE6 seem to change after fighting shades, but also with mission progress...
+
     _unk18a2=Bytes(240),  # zeros
     _unk18a3=Bytes(40),
     _unk18a4=Bytes(720),  # zeros
     _unk18a5=Bytes(86),
     save_time=DateTime,
-    _unk18b1=Bytes(200),
+    _unk18b1=Bytes(200),  # Something here changes when saving on a different day
     _unk18b2=Bytes(32771),  # zeros
     checksum=Checksum,
     _unk19=Bytes(12),  # zeros
 )
-
-"""
-Change: Tutorial "Weapon Quick Switching" New -> viewed
-@@ -1,7 +1,7 @@ _unk17a
-  0x008: c100012e  |  �...  |  b'\xc1\x00\x01.'
-- 0x00C: d833f6ff  |  �3��  |  b'\xd83\xf6\xff'
-+ 0x00C: d813f6ff  |  �.��  |  b'\xd8\x13\xf6\xff'
-  0x010: ffffffff  |  ����  |  b'\xff\xff\xff\xff'
-"""
 
 Gamedata = Struct(_unk=Bytes(33120), slots=RawCopy(Savefile)[3], _unk2=Bytes(149888))

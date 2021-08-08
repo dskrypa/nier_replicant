@@ -53,6 +53,7 @@ MAP_ZONE_MAP = {
     'DESERT_TOWN': 'Facade',
     'DESERT_TEMPLE': 'Barren Temple',
     'MOUNT_ROBOT': 'Junk Heap',
+    'MOUNT_FIELD': 'Junk Heap: Outside',
     'SOUTH_MANSION': 'Manor',
     'FOREST_FIELD': 'Forest of Myth',
     'SOUTH_UNDERGROUND': 'Underground Facility',
@@ -61,7 +62,8 @@ MAP_ZONE_MAP = {
     'SOUTH_FIELD': 'Southern Plains',
     'EAST_FIELD': 'Eastern Road',
     # '': 'Beneath the Forest of Myth',
-    'TOKYO_FIELD': 'Toyko',
+    'TOKYO_FIELD': 'Tokyo',
+    'MERMAID_FIELD': 'Wrecked Ship Interior',
 }
 
 # endregion
@@ -520,7 +522,7 @@ QUEST_NEW_MARKERS = [
     '_quest_73',
     '_quest_74',
     '_quest_75',
-    '_quest_76',
+    'Disturbing the Sleep of Kings',
     '_quest_77',
     '_quest_78',
     '_quest_79',
