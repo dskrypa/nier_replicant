@@ -186,7 +186,7 @@ def diff(item: str, args):
     else:
         keys = set(args.keys) if args.keys else None
 
-    obj_a.diff(obj_b, per_line=args.per_line, byte_diff=args.binary, keys=keys)
+    obj_a.diff(obj_b, per_line=args.per_line, byte_diff=args.binary, keys=keys, max_len=1)
 
 
 if __name__ == '__main__':

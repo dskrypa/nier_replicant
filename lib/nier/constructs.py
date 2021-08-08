@@ -21,7 +21,7 @@ from construct import ValidationError, RawCopy, singleton, Bit, EnumIntegerStrin
 
 from .constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, FERTILIZER, SWORDS_1H, SWORDS_2H, SPEARS
 from .constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
-from .constants import TUTORIALS, QUESTS, QUESTS_NEW_1, FISH_RECORDS
+from .constants import TUTORIALS, QUESTS, QUESTS_NEW_1, QUEST_NEW_MARKERS, FISH_RECORDS
 
 log = logging.getLogger(__name__)
 __all__ = ['Savefile', 'Gamedata', 'Plot']
@@ -196,6 +196,9 @@ class IntEnum(Enum):  # noqa
 
 # region Save Slot Fields
 
+ViewStateBit = Enum(Flag, new=True, viewed=False)
+QuestViewedStates = BitStruct(*((n if n else f'_quest_{i}') / ViewStateBit for i, n in enumerate(QUEST_NEW_MARKERS)))
+
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
 Ability = Enum(Int32ul, **{k: i for i, k in enumerate(ABILITIES)})
 Tutorials = BitsSwapped(BitStruct(*((n if n else f'_tutorial_{i}') / Flag for i, n in enumerate(TUTORIALS))))
@@ -271,7 +274,9 @@ Savefile = Struct(
     weapons=Weapons,
     _unk14=Bytes(225),
     quests=Quests(512, QUESTS),
-    _unk15=Bytes(312),
+    _unk15a=Bytes(280),
+    quest_viewed_states=QuestViewedStates,  # 11
+    _unk15b=Bytes(21),
     words=WordsLearned,
     _unk16a=Bytes(16),
     ability_words_a=AbilityWords,
