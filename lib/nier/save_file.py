@@ -284,6 +284,9 @@ class SaveFile(Constructed, construct=Savefile):
                 val = {k: 'started={started}, done={done}'.format(**v) for k, v in without_unknowns(val).items()}
             super()._pprint(key, val, sort_keys, unknowns=unknowns)
 
+    def update_quest(self, name: str, started: bool, done: bool, **kwargs):
+        self._parsed['quests'][name] = {'started': started, 'done': done, **kwargs}
+
 
 class Garden:
     def __init__(self, save_file: SaveFile):
@@ -409,6 +412,6 @@ def _clean(obj):
     elif isinstance(obj, Container):
         if set(obj) == {'offset1', 'length', 'offset2', 'data', 'value'}:  # RawCopy
             return _clean(obj.value)
-        return {key: _build(val) for key, val in obj.items() if key not in ('_io', '_flagsenum')}
+        return {key: _clean(val) for key, val in obj.items() if key not in ('_io', '_flagsenum')}
     else:
         return obj
