@@ -9,9 +9,10 @@ import _venv  # This will activate the venv, if it exists and is not already act
 import logging
 from datetime import datetime
 
-from nier.constants import FERTILIZER, FERTILIZER_ALIASES
+from nier.cli import ArgParser, get_path
+from nier.constants import FERTILIZER_ALIASES
 from nier.save_file import GameData
-from nier.utils import ArgParser, colored
+from nier.utils import colored
 
 ITEM_SECTIONS = ('recovery', 'cultivation', 'fishing', 'raw_materials')
 log = logging.getLogger(__name__)
@@ -186,30 +187,6 @@ def diff(item: str, args):
         keys = set(args.keys) if args.keys else None
 
     obj_a.diff(obj_b, per_line=args.per_line, byte_diff=args.binary, keys=keys)
-
-
-def get_path(path):
-    if path:
-        path = Path(path).expanduser()
-    else:
-        steam_dir = Path('~/Documents/My Games/NieR Replicant ver.1.22474487139/Steam/').expanduser()
-        if not steam_dir.exists():
-            raise PathRequired(f'steam_dir={steam_dir.as_posix()} does not exist')
-        steam_dirs = list(steam_dir.iterdir())
-        if len(steam_dirs) != 1:
-            raise PathRequired(f'a single directory under steam_dir={steam_dir.as_posix()} does not exist')
-        path = steam_dirs[0].joinpath('GAMEDATA')
-    if not path.exists():
-        raise PathRequired(f'path={path.as_posix()} does not exist')
-    return path
-
-
-class PathRequired(Exception):
-    def __init__(self, reason: str):
-        self.reason = reason
-
-    def __str__(self):
-        return f'--path is required because {self.reason}'
 
 
 if __name__ == '__main__':
