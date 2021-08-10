@@ -196,31 +196,29 @@ class IntEnum(Enum):  # noqa
 
 # region Save Slot Fields
 
+FishRecordState = Enum(Int8ul, new=1, viewed=0)
 ViewStateBit = Enum(Flag, new=True, viewed=False)
-QuestViewedStates = BitStruct(*((n if n else f'_quest_{i}') / ViewStateBit for i, n in enumerate(QUEST_NEW_MARKERS)))
+WeaponState = Enum(Int8ul, **{'Level 1': 0, 'Level 2': 1, 'Level 3': 2, 'Level 4': 3, 'Not Owned': 255})
 
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
 Ability = Enum(Int32ul, **{k: i for i, k in enumerate(ABILITIES)})
+WordEquipped = Enum(Int8ul, **({k: i for i, k in enumerate(WORDS)} | {'None': 255}))
+
 Tutorials = BitsSwapped(BitStruct(*((n if n else f'_tutorial_{i}') / Flag for i, n in enumerate(TUTORIALS))))
 WordsLearned = BitsSwapped(BitStruct(*((n if n else f'_word_{i}') / Flag for i, n in enumerate(WORDS))))
-WordEquipped = Enum(Int8ul, **({k: i for i, k in enumerate(WORDS)} | {'None': 255}))
-WeaponState = Enum(Int8ul, **{'Level 1': 0, 'Level 2': 1, 'Level 3': 2, 'Level 4': 3, 'Not Owned': 255})
-FishRecordState = Enum(Int8ul, new=1, viewed=0)
+QuestViewedStates = BitStruct(*((n if n else f'_quest_{i}') / ViewStateBit for i, n in enumerate(QUEST_NEW_MARKERS)))
 
 KeyItems = Struct(*(v / Int8ul for v in KEY_ITEMS))
 Documents = Struct(*(v / Int8ul for v in DOCUMENTS))
 Maps = Struct(*(v / Int8ul for v in MAPS))
 
 Plot = Struct(
-    seed=IntEnum(Int8ul, **({k: i for i, k in enumerate(PLANTS)} | {'None': 255})),
-    _unk0=Bytes(3),
-    fertilizer=IntEnum(Int8ul, **{k: i for i, k in enumerate(FERTILIZER)}),
-    _unk1=Bytes(3),
-    water=FlagsEnum(Int8ul, first=1, second=2),
-    _unk2=Bytes(3),
+    seed=IntEnum(Int32ul, **({k: i for i, k in enumerate(PLANTS)} | {'None': 255})),
+    fertilizer=IntEnum(Int32ul, **{k: i for i, k in enumerate(FERTILIZER)}),
+    water=FlagsEnum(Int32ul, first=1, second=2),
     direction=IntEnum(Float32l, East=0, North=90, West=180, South=270),
     time=DateTime,
-    _unk3=Bytes(1),
+    _pad=Bytes(1),
 )
 Garden = Sequence(RawCopy(Plot)[5], RawCopy(Plot)[5], RawCopy(Plot)[5])
 
@@ -228,9 +226,11 @@ Recovery = Struct(*_struct_parts(RECOVERY.values(), (18, 2, 1, 0)))
 Cultivation = Struct(*_struct_parts((FERTILIZERS, SEEDS, CULTIVATED), (2, 5, 0)))
 Fishing = Struct(*_struct_parts((BAIT, FISH), (7, 0)))
 RawMaterials = Struct(*_struct_parts(RAW_MATERIALS.values(), (3, 4, 5, 4, 1, 5, 1, 3, 0)))
+
 Weapons = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WeaponState))  # noqa
 WeaponWords = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WordEquipped))  # noqa
 AbilityWords = Struct(*(a / WordEquipped for a in ABILITIES[1:]))
+
 FishRecordStates = Struct(*(f / FishRecordState for f in FISH_RECORDS))
 FishRecordSizesCm = Struct(*(f / Float64l for f in FISH_RECORDS))
 FishRecordWeightsG = Struct(*(f / Float64l for f in FISH_RECORDS))
@@ -270,13 +270,17 @@ Savefile = Struct(
     maps=Maps,
 
     _unk12=Bytes(264),  # :40=zeros; 40:84=content; 84:104=zeros; 104:108=content; 108:128=zeros; 128:=mostly 0xFF
+
     # 0x08A (138): df -> 9f on recovery item new->viewed (strength capsule) [1 << 6]
     # 0x08A: 9f -> 1f on recovery item new->viewed (magic drop) [1 << 7]
+
     # 0x08B: 7f -> 6f on spirit capsule viewed [1 << 4]
 
     # 0x08D: ff -> fd on speed fertilizer viewed
-    # 0x092: ff -> f7 on freesia viewed
-    # 0x092: f7 -> e7 on red moonflower viewed
+
+    # 0x092: ff -> f7 on freesia viewed (1<<3)
+    # 0x092: f7 -> e7 on red moonflower viewed (1<<4)
+
     # 0x093: ff -> fb on white moonflower viewed
 
     # 0x094: ff -> df on lugworm viewed

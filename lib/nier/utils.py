@@ -1,4 +1,5 @@
 import json
+import math
 import sys
 from collections.abc import Mapping, KeysView, ValuesView, Callable
 from datetime import datetime, date, timedelta
@@ -212,3 +213,22 @@ def without_unknowns(data):
     if isinstance(data, dict):
         return {k: without_unknowns(v) for k, v in data.items() if not isinstance(k, str) or not k.startswith('_')}
     return data
+
+
+def bit_diff_index(a: int, b: int) -> int:
+    """
+    Determines which bit changed between values a and b.  Intended to make it easier to decode bit-packed arrays of
+    booleans.
+
+    For given bytes (as ints) a and b, the difference is computed via ``diff = a xor b``.  The bit that changed (the
+    exponent of 2 such that ``2 ** exp == diff``) is computed via ``exp = math.log(diff, 2)``.  The value that this
+    function returns is that exponent.
+    """
+    if not (0 <= a <= 255 and 0 <= b <= 255):
+        raise ValueError('bit_diff_index only supports a diff between 2 individual bytes')
+    diff = a ^ b
+    exp = math.log(diff, 2)
+    index = int(exp)
+    if exp != index:
+        raise ValueError(f'{a=} and {b=} differ by more than 1 bit')
+    return index
