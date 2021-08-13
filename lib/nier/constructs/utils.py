@@ -4,9 +4,9 @@ Utils for Nier Replicant save file constructs
 :author: Doug Skrypa
 """
 
-from construct import Int8ul, Bytes, Enum, Adapter, EnumIntegerString
+from construct import Int8ul, Bytes, Enum, Adapter, EnumIntegerString, BitsSwapped, BitStruct
 
-__all__ = ['EnumIntStr', 'IntEnum', '_struct_parts']
+__all__ = ['EnumIntStr', 'IntEnum', 'BitStructLE', '_struct_parts']
 
 
 def _struct_parts(sections, unknowns, struct=Int8ul):
@@ -14,6 +14,21 @@ def _struct_parts(sections, unknowns, struct=Int8ul):
         yield from (v / struct for v in section)
         if unknown:
             yield f'_unk{i}' / Bytes(unknown)
+
+
+def _expanded_parts(sections, unknowns, struct):
+    for group, (unknown, section) in enumerate(zip(unknowns, sections)):
+        yield from (v / struct for v in section)
+        if unknown:
+            for i in range(unknown):
+                yield f'_unk_{group}_{i}' / struct
+
+
+def BitStructLE(sections, unknowns, struct, expand: bool = False):
+    if expand:
+        return BitsSwapped(BitStruct(*_expanded_parts(sections, unknowns, struct)))
+    else:
+        return BitsSwapped(BitStruct(*_struct_parts(sections, unknowns, struct)))
 
 
 class EnumIntStr(EnumIntegerString):

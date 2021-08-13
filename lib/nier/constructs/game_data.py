@@ -9,11 +9,10 @@ from construct import Enum, FlagsEnum, Sequence, BitStruct, Flag, BitsSwapped, E
 
 from ..constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, FERTILIZER, SWORDS_1H, SWORDS_2H, SPEARS
 from ..constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
-from ..constants import TUTORIALS, QUESTS, QUESTS_NEW_1, QUEST_NEW_MARKERS, FISH_RECORDS
+from ..constants import TUTORIALS, QUESTS, QUESTS_NEW_1, QUESTS_VIEWED, FISH_RECORDS
 from .adapters import DateTime, Checksum, Weapon, Quests
-from .utils import IntEnum, _struct_parts
+from .utils import IntEnum, BitStructLE, _struct_parts
 
-__all__ = ['Savefile', 'Gamedata', 'Plot']
 
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
 Tutorials = BitsSwapped(BitStruct(*((n if n else f'_tutorial_{i}') / Flag for i, n in enumerate(TUTORIALS))))
@@ -63,11 +62,20 @@ FishRecordWeightsG = Struct(*(f / Float64l for f in FISH_RECORDS))
 # region New / Viewed
 ViewStateBit = Enum(Flag, new=True, viewed=False)
 
-QuestViewedStates = BitStruct(*((n if n else f'_quest_{i}') / ViewStateBit for i, n in enumerate(QUEST_NEW_MARKERS)))
+QuestViewedStates = BitStructLE((QUESTS_VIEWED,), (0,), ViewStateBit)  # 11
+KeyItemViewedStates = BitStructLE((KEY_ITEMS,), (0,), ViewStateBit)  # 10
+# MapViewedStates = BitStructLE(([], MAPS), (1, 7), ViewStateBit)  # 4
+# MapViewedStates = BitStructLE(([], KEY_ITEM_MAPS), (1, 6), ViewStateBit)  # 3
+
+RecoveryViewedStates = BitStructLE(RECOVERY.values(), (18, 2, 1, 6), ViewStateBit)  # 5
+CultivationViewedStates = BitStructLE(([], FERTILIZERS, SEEDS, CULTIVATED), (1, 2, 5, 5), ViewStateBit)  # 7
+FishingViewedStates = BitStructLE(([], BAIT, FISH), (5, 7, 2), ViewStateBit)  # 4
+RawMaterialsViewedStates = BitStructLE(([], *RAW_MATERIALS.values()), (3, 3, 4, 5, 4, 1, 5, 1, 3, 0), ViewStateBit)  # 16
 # endregion
 
 # region Save File
 Savefile = Struct(
+    # region Character Info
     corruptness=ExprValidator(Int32ul, lambda val, ctx: val == 200),
     map=PaddedString(32, 'utf-8'),
     spawn=Int32ul,
@@ -85,49 +93,33 @@ Savefile = Struct(
     left_bumper=Ability, right_bumper=Ability, left_trigger=Ability, right_trigger=Ability,
     _unk6=Bytes(12),
     money=Int32sl,
+    # endregion
 
     recovery=Recovery,  # 34
     _unk7=Bytes(7),  # zeros
-
     cultivation=Cultivation,  # 50
     _unk8=Bytes(10),  # zeros
-
     fishing=Fishing,  # 25
     _unk9=Bytes(5),  # zeros
-
     raw_materials=RawMaterials,  # 125
     key_items=KeyItems,  # 80
     _unk10=Bytes(176),  # zeros
-
     documents=Documents,  # 24
     _unk11=Bytes(168),  # zeros
-
     maps=Maps,  # 24
 
-    _unk12=Bytes(264),  # :40=zeros; 40:84=content; 84:104=zeros; 104:108=content; 108:128=zeros; 128:=mostly 0xFF
+    _unk12a=Bytes(136),  # :40=zeros; 40:84=content; 84:104=zeros; 104:108=content; 108:128=zeros
+    recovery_viewed_states=RecoveryViewedStates,  # 5
+    cultivation_viewed_states=CultivationViewedStates,  # 7
+    fishing_viewed_states=FishingViewedStates,  # 4
+    raw_materials_viewed_states=RawMaterialsViewedStates,  # 16
+    key_item_viewed_states=KeyItemViewedStates,  # 10
+    _unk12b=Bytes(86),
 
-    # _unk12a=Bytes(137),
-    # _unk12z=Bytes(38),
-
-
-    # 0x08A (138): df -> 9f on recovery item new->viewed (strength capsule) [1 << 6]
-    # 0x08A: 9f -> 1f on recovery item new->viewed (magic drop) [1 << 7]
-
-    # 0x08B: 7f -> 6f on spirit capsule viewed [1 << 4]
-
-    # 0x08D: ff -> fd on speed fertilizer viewed
-
-    # 0x092: ff -> f7 on freesia viewed (1<<3)
-    # 0x092: f7 -> e7 on red moonflower viewed (1<<4)
-
-    # 0x093: ff -> fb on white moonflower viewed
-
-    # 0x094: ff -> df on lugworm viewed
-    # 0x096: df -> cf on blue marlin viewed
-
-    # 0x098: ef -> e7 on aquatic plant viewed
-    # 0x0A7: ff -> 7f on deer antler viewed
-
+    # _unk12b1=Bytes(48),
+    # map_viewed_states=MapViewedStates,
+    # _unk12b2=Bytes(35),
+    # _unk12a + ...
     # 0x0A8: ff -> fe on moon key viewed (key item)
     # 0x0E2 (226): c7 -> c5 on shadowlord's castle map viewed
 
@@ -172,12 +164,30 @@ Savefile = Struct(
     _unk18a3=Bytes(40),
     _unk18a4=Bytes(720),  # zeros
     _unk18a5=Bytes(86),
+
     save_time=DateTime,  # 7
     _unk18b1=Bytes(200),  # Something here changes when saving on a different day
     _unk18b2=Bytes(32771),  # zeros
     checksum=Checksum,  # 4
     _unk19=Bytes(12),  # zeros
 )
+
+"""
+@@ total_play_time @@
+- 230805.59111096337
++ 230815.530786369
+@@ save_time @@
+@@ -1 +1 @@ save_time
+-"2021-08-12 17:43:18 "
++"2021-08-13 15:08:39 "
+@@ -1,4 +1,4 @@ _unk18b1
+- 0x00: 04000006  |  ....  |  b'\x04\x00\x00\x06'
++ 0x00: 05000006  |  ....  |  b'\x05\x00\x00\x06'
+  0x04: 00000003  |  ....  |  b'\x00\x00\x00\x03'
+  0x08: 00000007  |  ....  |  b'\x00\x00\x00\x07'
+  0x0C: 00000002  |  ....  |  b'\x00\x00\x00\x02'
+"""
+
 # endregion
 
 Header = Struct(
