@@ -43,11 +43,11 @@ MAP_ZONES = [
 ]
 
 MAP_ZONE_MAP = {
-    # Many of these are guesses
     'CENTER_VILLAGE': 'NieR\'s Village',
     'CENTER_LIBRARY': 'Library',
     'CLIFF_VILLAGE': 'The Aerie',
     'STONE_TEMPLE': 'Lost Shrine',
+    'STONE_FIELD': 'Lost Shrine: Roof',
     'SEASIDE_TOWN': 'Seafront',
     'DESERT_FIELD': 'Desert',
     'DESERT_TOWN': 'Facade',
@@ -61,7 +61,6 @@ MAP_ZONE_MAP = {
     'NORTH_FIELD': 'Northern Plains',
     'SOUTH_FIELD': 'Southern Plains',
     'EAST_FIELD': 'Eastern Road',
-    # '': 'Beneath the Forest of Myth',
     'TOKYO_FIELD': 'Tokyo',
     'MERMAID_FIELD': 'Wrecked Ship Interior',
 }

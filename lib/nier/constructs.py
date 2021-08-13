@@ -13,7 +13,7 @@ Newly decoded fields in this module include time (for a given save + for each ga
 import logging
 from datetime import datetime
 from io import BytesIO
-from typing import Optional
+from typing import Optional, Union
 
 from construct import Struct, Int8ul, Int32sl, Int32ul, Float64l, Float32l, PaddedString, Bytes, Int16ul
 from construct import Enum, FlagsEnum, Sequence, Adapter, BitStruct, Flag, BitsSwapped, ExprValidator, Subconstruct
@@ -36,11 +36,16 @@ class DateTime(Adapter):  # noqa
     def __init__(self):
         super().__init__(self._base_struct)
 
-    def _decode(self, obj, context, path) -> Optional[datetime]:
+    def _decode(self, obj, context, path) -> Union[datetime, None, dict[str, int]]:
         del obj['_io']
-        return datetime(**obj) if obj.year else None
+        try:
+            return datetime(**obj) if obj.year else None
+        except ValueError:
+            return dict(obj)
 
-    def _encode(self, obj: Optional[datetime], context, path):
+    def _encode(self, obj: Union[datetime, None, dict[str, int]], context, path):
+        if isinstance(obj, dict):
+            return obj
         fields = (sc.name for sc in self.subcon.subcons)
         return {f: 0 for f in fields} if obj is None else {f: getattr(obj, f) for f in fields}
 
@@ -340,4 +345,6 @@ Savefile = Struct(
     _unk19=Bytes(12),  # zeros
 )
 
-Gamedata = Struct(_unk=Bytes(33120), slots=RawCopy(Savefile)[3], _unk2=Bytes(149888))
+# Gamedata = Struct(_unk=Bytes(33120), slots=RawCopy(Savefile)[3], _unk2=Bytes(149888))
+# I suspect the ending D "deletion" of saves just moves them into a slot outside of the initial array of 3
+Gamedata = Struct(_unk=Bytes(33120), slots=RawCopy(Savefile)[7])

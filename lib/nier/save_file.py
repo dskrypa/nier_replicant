@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from difflib import unified_diff
 from functools import cached_property
 from pathlib import Path
-from typing import Union, Optional, Iterator, Collection
+from typing import Union, Optional, Iterator, Collection, Any
 
 from construct.lib.containers import ListContainer, Container
 
@@ -193,6 +193,8 @@ class Constructed:
 
 
 class GameData(Constructed, construct=Gamedata):
+    """Represents the full GAMEDATA file, including all save slots."""
+
     def __init__(self, data: bytes, path: Path = None):
         super().__init__(data)
         self._path = path
@@ -235,11 +237,19 @@ class GameData(Constructed, construct=Gamedata):
     def ok(self) -> bool:
         return all(f.ok for f in self.slots)
 
-    def __getitem__(self, slot_or_key: Union[int, str]):
+    def __getitem__(self, slot_or_key: Union[int, str]) -> Union['SaveFile', Any]:
+        """
+        Slots are 0-indexed.  Slots 0-2 (saves 1-3) are the 3 that are visible in-game.  I assume slots 3-6 are where
+        "deleted" saves are stored by ending D.
+
+        :param slot_or_key: A slot index or key for a sub-construct
+        :return: A :class:`SaveFile` for the given slot, or the specified sub-construct
+        """
         return self.slots[slot_or_key] if isinstance(slot_or_key, int) else self._parsed[slot_or_key]
 
-    def __iter__(self):
-        yield from self.slots
+    def __iter__(self) -> Iterator['SaveFile']:
+        """Iterate over the first 3 :class:`SaveFile`s"""
+        yield from self.slots[:3]
 
 
 class SaveFile(Constructed, construct=Savefile):
@@ -251,10 +261,8 @@ class SaveFile(Constructed, construct=Savefile):
 
     def __repr__(self) -> str:
         name = self.character if self.name.lower() in self.character.lower() else f'{self.name} ({self.character})'
-        return (
-            f'<SaveFile#{self._num}[{name}, Lv.{self.level} @ {self.location}][{self.play_time}]'
-            f'[{self.save_time.isoformat(" ")}]>'
-        )
+        save_time = self.save_time.isoformat(' ') if isinstance(self.save_time, datetime) else 'N/A'
+        return f'<SaveFile#{self._num}[{name}, Lv.{self.level} @ {self.location}][{self.play_time}][{save_time}]>'
 
     @property
     def ok(self) -> bool:
