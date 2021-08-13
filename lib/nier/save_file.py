@@ -4,9 +4,12 @@ Higher level classes for working with NieR Replicant ver.1.22474487139... save f
 :author: Doug Skrypa
 """
 
+import gzip
 import logging
 import shutil
 import struct
+from base64 import b64decode
+from copy import deepcopy
 from datetime import datetime, timedelta
 from difflib import unified_diff
 from functools import cached_property
@@ -15,7 +18,7 @@ from typing import Union, Optional, Iterator, Collection, Any
 
 from construct.lib.containers import ListContainer, Container
 
-from .constants import MAP_ZONE_MAP, SEED_RESULT_MAP
+from .constants import EMPTY_SAVE_SLOT, MAP_ZONE_MAP, SEED_RESULT_MAP
 from .constructs import Gamedata, Savefile, Plot
 from .utils import to_hex_and_str, pseudo_json, colored, unified_byte_diff, cached_classproperty, unique_path
 from .utils import without_unknowns, pseudo_json_rows
@@ -198,7 +201,7 @@ class GameData(Constructed, construct=Gamedata):
     def __init__(self, data: bytes, path: Path = None):
         super().__init__(data)
         self._path = path
-        self.slots = [SaveFile(slot, i) for i, slot in enumerate(self._parsed.slots, 1)]
+        self.slots = [SaveFile(slot, i, self) for i, slot in enumerate(self._parsed.slots, 1)]
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> 'GameData':
@@ -215,7 +218,7 @@ class GameData(Constructed, construct=Gamedata):
           if :meth:`.load` was used or an explicit path was provided)
         :param backup: Whether a backup copy of the original save file should be saved
         """
-        path = path or self._path
+        path = Path(path).expanduser() if path else self._path
         if not path:
             raise ValueError(f'A path is required to save {self}')
 
@@ -247,6 +250,30 @@ class GameData(Constructed, construct=Gamedata):
         """
         return self.slots[slot_or_key] if isinstance(slot_or_key, int) else self._parsed[slot_or_key]
 
+    def __setitem__(self, slot: int, value: 'SaveFile'):
+        """
+        Overwrite a save slot with a different :class:`SaveFile`.  If the save file originated from a :class:`GameData`
+        object (i.e., if its :attr:`SaveFile._parent` attribute was set), then a deep copy of the :class:`SaveFile` will
+        be stored in this one.  That means that any subsequent changes to the original :class:`SaveFile` will not be
+        reflected when saving this game data, so a new reference to the slot must be obtained to make further changes.
+
+        :param slot: The slot to overwrite
+        :param value: The :class:`SaveFile` to be used in the specified slot
+        """
+        if not 0 <= slot <= 6:
+            raise ValueError(f'Invalid slot index={slot!r}')
+        if not isinstance(value, SaveFile):
+            raise TypeError(f'Can only set SaveFile slot values - type={type(value).__name__} is not supported')
+        if value._parent:
+            value = value.copy()
+        value._parent = self
+        self._parsed.slots[slot] = {'data': value._data, 'value': value._parsed}
+        self.slots[slot] = value
+        value._num = slot + 1
+
+    def __delitem__(self, slot: int):
+        self[slot] = SaveFile.empty()
+
     def __iter__(self) -> Iterator['SaveFile']:
         """Iterate over the first 3 :class:`SaveFile`s"""
         yield from self.slots[:3]
@@ -255,24 +282,31 @@ class GameData(Constructed, construct=Gamedata):
 class SaveFile(Constructed, construct=Savefile):
     """Represents one save slot."""
 
-    def __init__(self, slot: Container, num: int):
-        super().__init__(slot.data, slot.value)  # data/value are set by RawCopy for the raw bytes and parsed value
+    def __init__(self, slot: Union[Container, bytes], num: int, parent: GameData = None):
+        self._parent = parent
+        if isinstance(slot, bytes):
+            super().__init__(slot)  # Loaded directly from file
+        else:
+            super().__init__(slot['data'], slot['value'])  # raw bytes data / parsed value from RawCopy
         self._num = num
 
     def __repr__(self) -> str:
-        name = self.character if self.name.lower() in self.character.lower() else f'{self.name} ({self.character})'
-        save_time = self.save_time.isoformat(' ') if isinstance(self.save_time, datetime) else 'N/A'
-        return f'<SaveFile#{self._num}[{name}, Lv.{self.level} @ {self.location}][{self.play_time}][{save_time}]>'
+        time = self.save_time.isoformat(' ') if isinstance(self.save_time, datetime) else 'N/A'
+        return f'<SaveFile#{self._num}[{time}][{self.play_time}][{self._name}, Lv.{self.level} @ {self.location}]>'
 
     @property
     def ok(self) -> bool:
         return self._parsed.corruptness == 200
 
     @cached_property
+    def _name(self) -> str:
+        return self.character if self.name.lower() in self.character.lower() else f'{self.name} ({self.character})'
+
+    @cached_property
     def play_time(self) -> str:
         hours, seconds = divmod(int(self._parsed.total_play_time), 3600)
         minutes, seconds = divmod(seconds, 60)
-        return f'{hours:01d}:{minutes:02d}:{seconds:02d}'
+        return f'{hours:02d}:{minutes:02d}:{seconds:02d}'
 
     @cached_property
     def known_words(self) -> list[str]:
@@ -298,6 +332,42 @@ class SaveFile(Constructed, construct=Savefile):
 
     def update_quest(self, name: str, started: bool, done: bool, **kwargs):
         self._parsed['quests'][name] = {'started': started, 'done': done, **kwargs}
+
+    def save(self, path: Union[str, Path]):
+        """
+        Save this save file/slot to a separate file.
+
+        :param path: Location where the file should be written
+        :raises: :class:`ValueError` if the specified path already exists.
+        """
+        path = Path(path).expanduser()
+        if path.exists() and path.is_dir():
+            path = path.joinpath(f'{self._name} - Lv{self.level} - {self.location} - {int(self.total_play_time)}.sav')
+        if path.exists():
+            raise ValueError(f'Invalid path={path.as_posix()} - it already exists')
+        elif not path.parent.exists():
+            path.parent.mkdir(parents=True)
+
+        data = self._construct.build(self._build())  # Prevent creating an empty file if an exception is raised
+        log.info(f'Saving {path.as_posix()}')
+        with Path(path).expanduser().open('wb') as f:
+            f.write(data)
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> 'SaveFile':
+        path = Path(path).expanduser()
+        log.debug(f'Loading save slot from path={path.as_posix()}')
+        with path.open('rb') as f:
+            return cls(f.read(), -1)
+
+    def copy(self) -> 'SaveFile':
+        """Create a deep copy of this :class:`SaveFile` with no :class:`GameData` parent."""
+        return self.__class__({'data': self._data, 'value': deepcopy(self._parsed)}, self._num)
+
+    @classmethod
+    def empty(cls) -> 'SaveFile':
+        """Creates an empty :class:`SaveFile`"""
+        return cls(gzip.decompress(b64decode(EMPTY_SAVE_SLOT)), -1)
 
 
 class Garden:
