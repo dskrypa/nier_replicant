@@ -11,7 +11,6 @@ import struct
 from base64 import b64decode
 from copy import deepcopy
 from datetime import datetime, timedelta
-from difflib import unified_diff
 from functools import cached_property
 from pathlib import Path
 from typing import Union, Optional, Iterator, Collection, Any
@@ -20,8 +19,8 @@ from construct.lib.containers import ListContainer, Container
 
 from .constants import EMPTY_SAVE_SLOT, MAP_ZONE_MAP, SEED_RESULT_MAP
 from .constructs import Gamedata, Savefile, Plot, Header
-from .utils import to_hex_and_str, pseudo_json, colored, unified_byte_diff, cached_classproperty, unique_path
-from .utils import without_unknowns, pseudo_json_rows
+from .diff import pseudo_json_diff, unified_byte_line_diff
+from .utils import to_hex_and_str, pseudo_json, colored, cached_classproperty, unique_path, without_unknowns
 
 __all__ = ['GameData', 'SaveFile']
 log = logging.getLogger(__name__)
@@ -76,46 +75,30 @@ class Constructed:
         row_keys = {'quests', 'quests_b'}
         found_difference = False
         for key, own_raw in self.raw_items():
-            if keys and key not in keys:
+            if (keys and key not in keys) or ((other_raw := other.raw(key)) == own_raw):
                 continue
-            other_raw = other.raw(key)
-            if own_raw != other_raw:
-                own_val = self[key]
-                if not found_difference:
-                    found_difference = True
-                    print(f'--- {self}')
-                    print(f'+++ {other}')
+            if not found_difference:
+                found_difference = True
+                print(f'--- {self}\n+++ {other}')
 
-                if isinstance(self, GameData) and key in ('slots', 'header'):
-                    if key == 'slots':
-                        for own, other_slot in zip(self.slots, other.slots):
-                            own.diff(other_slot, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=keys)
-                    elif key == 'header':
-                        h_keys = set(keys).difference({'header'}) if keys else None
-                        self.header.diff(
-                            other.header, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=h_keys
-                        )
-                elif not byte_diff and own_val != own_raw and not isinstance(own_val, (float, int, str)):
-                    print(colored(f'@@ {key} @@', 6))
-                    func = pseudo_json_rows if key in row_keys else pseudo_json
-                    a, b = func(own_val).splitlines(), func(other[key]).splitlines()
-                    for i, line in enumerate(unified_diff(a, b, n=2, lineterm=colored(f' {key}', 7))):
-                        if line.startswith('+'):
-                            if i > 1:
-                                print(colored(line, 2))
-                        elif line.startswith('-'):
-                            if i > 1:
-                                print(colored(line, 1))
-                        elif line.startswith('@@ '):
-                            print(colored(line, 3))
-                        else:
-                            print(line)
-                elif max_len and isinstance(own_val, bytes) and len(own_raw) > max_len:
-                    unified_byte_diff(own_raw, other_raw, lineterm=key, struct=repr, per_line=per_line)
-                else:
-                    print(colored(f'@@ {key} @@', 6))
-                    print(colored(f'- {own_val}', 1))
-                    print(colored(f'+ {other[key]}', 2))
+            own_val = self[key]
+            if isinstance(self, GameData) and key in ('slots', 'header'):
+                if key == 'slots':
+                    for own, other_slot in zip(self.slots, other.slots):
+                        own.diff(other_slot, max_len=max_len, byte_diff=byte_diff, keys=keys, per_line=per_line)
+                elif key == 'header':
+                    h_keys = set(keys).difference({'header'}) if keys else None
+                    self.header.diff(other.header, max_len=max_len, byte_diff=byte_diff, keys=h_keys, per_line=per_line)
+            elif not byte_diff and own_val != own_raw and not isinstance(own_val, (float, int, str)):
+                print(colored(f'@@ {key} @@', 6))
+                pseudo_json_diff(own_val, other[key], key in row_keys, key)
+            elif max_len and isinstance(own_val, bytes) and len(own_raw) > max_len:
+                unified_byte_line_diff(own_raw, other_raw, lineterm=key, struct=repr, per_line=per_line)
+                # unified_byte_diff(own_raw, other_raw, lineterm=key, struct=repr, per_line=per_line)
+            else:
+                print(colored(f'@@ {key} @@', 6))
+                print(colored(f'- {own_val}', 1))
+                print(colored(f'+ {other[key]}', 2))
 
     def view(self, key: str, per_line: int = 40, hide_empty: Union[bool, int] = 10, **kwargs):
         data = self.raw(key)
@@ -257,11 +240,8 @@ class GameData(Constructed, construct=Gamedata):
         """
         if isinstance(slot_or_key, int):
             return self.slots[slot_or_key]
-        # elif slot_or_key == 'header':
-        #     return self.header
         else:
             return _clean(self._parsed[slot_or_key])
-            # raise KeyError(slot_or_key)
 
     def __getattr__(self, key: str):
         try:

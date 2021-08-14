@@ -1,9 +1,7 @@
 import json
-import math
 import sys
 from collections.abc import Mapping, KeysView, ValuesView, Callable
 from datetime import datetime, date, timedelta
-from difflib import SequenceMatcher
 from pathlib import Path
 from struct import calcsize, unpack_from, error as StructError
 from traceback import format_tb
@@ -14,8 +12,8 @@ from unicodedata import category
 from colored import stylize, fg
 
 
-def colored(text, fg_color):
-    return stylize(text, fg(fg_color))
+def colored(text, fg_color, do_color: bool = True):
+    return stylize(text, fg(fg_color)) if do_color and fg_color is not None else text
 
 
 def to_hex_and_str(
@@ -129,50 +127,6 @@ def pseudo_json_rows(data, sort_keys: bool = True) -> str:
     return f'[\n{rows}\n]'
 
 
-def unified_byte_diff(
-    a: bytes, b: bytes, n: int = 3, lineterm: str = '', color: bool = True, per_line: int = 20, **kwargs
-):
-    offset_fmt = '{{}} 0x{{:0{}X}}:'.format(len(hex(max(len(a), len(b)))) - 2).format
-    av = memoryview(a)
-    bv = memoryview(b)
-    a = [av[i: i + per_line] for i in range(0, len(a), per_line)]
-    b = [bv[i: i + per_line] for i in range(0, len(b), per_line)]
-
-    for group in SequenceMatcher(None, a, b, autojunk=False).get_grouped_opcodes(n):
-        first, last = group[0], group[-1]
-        file1_range = _format_range_unified(first[1], last[2])
-        file2_range = _format_range_unified(first[3], last[4])
-        range_str = f'@@ -{file1_range} +{file2_range} @@'
-        range_str = colored(range_str, 6) if color else range_str
-        print(f'{range_str} {lineterm}' if lineterm else range_str)
-
-        for tag, i1, i2, j1, j2 in group:
-            if tag == 'equal':
-                for i, line in enumerate(a[i1:i2], i1):
-                    print(to_hex_and_str(offset_fmt(' ', i * per_line), line.tobytes(), fill=per_line, **kwargs))
-                continue
-            if tag in {'replace', 'delete'}:
-                for i, line in enumerate(a[i1:i2], i1):
-                    line_str = to_hex_and_str(offset_fmt('-', i * per_line), line.tobytes(), fill=per_line, **kwargs)
-                    print(colored(line_str, 1) if color else line_str)
-            if tag in {'replace', 'insert'}:
-                for i, line in enumerate(b[j1:j2], j1):
-                    line_str = to_hex_and_str(offset_fmt('+', i * per_line), line.tobytes(), fill=per_line, **kwargs)
-                    print(colored(line_str, 2) if color else line_str)
-
-
-def _format_range_unified(start: int, stop: int) -> str:
-    """Convert range to the "ed" format. Copied from difflib"""
-    # Per the diff spec at http://www.unix.org/single_unix_specification/
-    beginning = start + 1     # lines start numbering with one
-    length = stop - start
-    if length == 1:
-        return str(beginning)
-    if not length:
-        beginning -= 1        # empty ranges begin at line just before the range
-    return f'{beginning},{length}'
-
-
 class cached_classproperty:
     def __init__(self, func):
         self.__doc__ = func.__doc__
@@ -213,22 +167,3 @@ def without_unknowns(data):
     if isinstance(data, dict):
         return {k: without_unknowns(v) for k, v in data.items() if not isinstance(k, str) or not k.startswith('_')}
     return data
-
-
-def bit_diff_index(a: int, b: int) -> int:
-    """
-    Determines which bit changed between values a and b.  Intended to make it easier to decode bit-packed arrays of
-    booleans.
-
-    For given bytes (as ints) a and b, the difference is computed via ``diff = a xor b``.  The bit that changed (the
-    exponent of 2 such that ``2 ** exp == diff``) is computed via ``exp = math.log(diff, 2)``.  The value that this
-    function returns is that exponent.
-    """
-    if not (0 <= a <= 255 and 0 <= b <= 255):
-        raise ValueError('bit_diff_index only supports a diff between 2 individual bytes')
-    diff = a ^ b
-    exp = math.log(diff, 2)
-    index = int(exp)
-    if exp != index:
-        raise ValueError(f'{a=} and {b=} differ by more than 1 bit')
-    return index
