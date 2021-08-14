@@ -47,7 +47,7 @@ def SparseBitFlagEnum(byte_width: int, labels: Sequence[str], empty_fmt: str = '
     if len(labels) > bits:
         raise ValueError(f'{byte_width=} does not contain enough {bits=} to fit {len(labels)} labels')
     label_names = [n if n else empty_fmt.format(i) for i, n in enumerate(labels)]
-    if len(labels) % 8 != 0:
+    if len(labels) < bits:
         label_names.extend(empty_fmt.format(i) for i in range(len(labels), bits))
     return BitsSwapped(BitStruct(*(label / flag_struct for label in label_names)))  # noqa
 
