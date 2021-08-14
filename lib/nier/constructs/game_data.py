@@ -11,11 +11,11 @@ from ..constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, F
 from ..constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
 from ..constants import TUTORIALS, QUESTS, QUESTS_NEW_1, QUESTS_VIEWED, FISH_RECORDS
 from .adapters import DateTime, Checksum, Weapon, Quests
-from .utils import IntEnum, BitStructLE, BitFlagEnum, _struct_parts
+from .utils import IntEnum, BitStructLE, BitFlagEnum, SparseBitFlagEnum, _struct_parts
 
 
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
-Tutorials = BitsSwapped(BitStruct(*((n if n else f'_tutorial_{i}') / Flag for i, n in enumerate(TUTORIALS))))
+Tutorials = SparseBitFlagEnum(0, TUTORIALS, '_tutorial_{}')
 
 # region Garden
 Plot = Struct(
@@ -45,7 +45,7 @@ Ability = Enum(Int32ul, **{k: i for i, k in enumerate(ABILITIES)})
 WeaponState = Enum(Int8ul, **{'Level 1': 0, 'Level 2': 1, 'Level 3': 2, 'Level 4': 3, 'Not Owned': 255})
 WordEquipped = Enum(Int8ul, **({k: i for i, k in enumerate(WORDS)} | {'None': 255}))
 
-WordsLearned = BitsSwapped(BitStruct(*((n if n else f'_word_{i}') / Flag for i, n in enumerate(WORDS))))
+WordsLearned = SparseBitFlagEnum(0, WORDS, '_word_{}')
 
 Weapons = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WeaponState))  # noqa
 WeaponWords = Struct(*_struct_parts((SWORDS_1H, SWORDS_2H, SPEARS), (3, 10, 0), WordEquipped))  # noqa
@@ -62,8 +62,8 @@ FishRecordWeightsG = Struct(*(f / Float64l for f in FISH_RECORDS))
 # region New / Viewed
 ViewStateBit = Enum(Flag, new=True, viewed=False)
 
-QuestViewedStates = BitStructLE((QUESTS_VIEWED,), (0,), ViewStateBit)  # 11
-KeyItemViewedStates = BitStructLE((KEY_ITEMS,), (0,), ViewStateBit)  # 10
+QuestViewedStates = SparseBitFlagEnum(11, QUESTS_VIEWED, flag_struct=ViewStateBit)  # 11
+KeyItemViewedStates = SparseBitFlagEnum(10, KEY_ITEMS, flag_struct=ViewStateBit)  # 10
 # MapViewedStates = BitStructLE(([], MAPS), (1, 7), ViewStateBit)  # 4
 # MapViewedStates = BitStructLE(([], KEY_ITEM_MAPS), (1, 6), ViewStateBit)  # 3
 
@@ -176,8 +176,8 @@ Savefile = Struct(
 # region Header
 # Header size: 33,120
 Header = Struct(
-    _unk1=Bytes(4),         # Always 0x6E (ascii: 'n')
-    endings=BitFlagEnum(1, A=0, B=1, C=2, D=3, E=4),
+    _unk1=Bytes(4),         # 1st byte is always 0x6E (110; ascii: 'n'), the rest are 0s
+    endings=BitFlagEnum(1, 'ABCDE'),
     _unk2=Bytes(35),        # zeros
     _unk3=Bytes(16),        # Changes between young->old and no ending -> ending
     _unk4=Bytes(24),        # zeros
