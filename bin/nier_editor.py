@@ -125,20 +125,11 @@ def view(game_data: GameData, item: str, slot_num: int, args):
         if len(slots) > 1:
             raise ValueError('--slot is required for viewing items')
         slots[0].pprint(keys=set(ITEM_SECTIONS))
-    elif item == 'attrs':
-        if len(slots) > 1:
+    elif item in ('attrs', 'header'):
+        if item == 'attrs' and len(slots) > 1:
             raise ValueError('--slot is required for viewing attributes')
-        slots[0].pprint(
-            args.unknowns,
-            args.attr,
-            binary=args.binary,
-            per_line=args.per_line,
-            hide_empty=args.hide_empty,
-            sort_keys=args.sort_keys,
-            struct=repr,
-        )
-    elif item == 'header':
-        game_data.header.pprint(
+        obj = slots[0] if item == 'attrs' else game_data.header
+        obj.pprint(
             args.unknowns,
             args.attr,
             binary=args.binary,
