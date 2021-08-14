@@ -164,9 +164,9 @@ Savefile = Struct(
     _unk18a3=Bytes(40),
     _unk18a4=Bytes(720),  # zeros
     _unk18a5=Bytes(86),
-
     save_time=DateTime,  # 7
-    _unk18b1=Bytes(200),  # Something here changes when saving on a different day
+    _unk18b0=Int8ul,  # Seems to increment by 1 when saving the next day; may be uint16; can't be int32
+    _unk18b1=Bytes(199),
     _unk18b2=Bytes(32771),  # zeros
     checksum=Checksum,  # 4
     _unk19=Bytes(12),  # zeros

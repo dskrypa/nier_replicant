@@ -92,7 +92,9 @@ class Constructed:
                             own.diff(other_slot, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=keys)
                     elif key == 'header':
                         h_keys = set(keys).difference({'header'}) if keys else None
-                        own_val.diff(other[key], max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=h_keys)
+                        self.header.diff(
+                            other.header, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=h_keys
+                        )
                 elif not byte_diff and own_val != own_raw and not isinstance(own_val, (float, int, str)):
                     print(colored(f'@@ {key} @@', 6))
                     func = pseudo_json_rows if key in row_keys else pseudo_json
@@ -255,11 +257,11 @@ class GameData(Constructed, construct=Gamedata):
         """
         if isinstance(slot_or_key, int):
             return self.slots[slot_or_key]
-        elif slot_or_key == 'header':
-            return self.header
+        # elif slot_or_key == 'header':
+        #     return self.header
         else:
-            # return _clean(self._parsed[slot_or_key])
-            raise KeyError(slot_or_key)
+            return _clean(self._parsed[slot_or_key])
+            # raise KeyError(slot_or_key)
 
     def __getattr__(self, key: str):
         try:
