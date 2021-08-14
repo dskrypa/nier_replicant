@@ -68,6 +68,21 @@ def unified_byte_diff(
 def unified_byte_line_diff(
     a: bytes, b: bytes, n: int = 3, lineterm: str = '', color: bool = True, per_line: int = 20, **kwargs
 ):
+    """
+    Performs a line-by-line diff of binary values a and b. Uses a custom diff function instead of difflib since the
+    input values in this project will always be the same length, and it is easier to see what specifically changed when
+    comparing the same line before/after.  The :class:`SequenceMatcher<difflib.SequenceMatcher>` would sometimes
+    mis-align match starts, which could have the effect of producing hundreds of lines of garbage in some cases, or just
+    make it harder to compare the before/after for a given line.
+
+    :param a: Binary data
+    :param b: Binary data
+    :param n: Number of equal lines to include for context
+    :param lineterm: Diff range line terminator
+    :param color: Whether ansi color codes should be used or not
+    :param per_line: Number of bytes to include on each line
+    :param kwargs: Keyword args to pass to :func:`to_hex_and_str<.utils.to_hex_and_str>`
+    """
     offset = '{{}} 0x{{:0{}X}}:'.format(len(hex(max(len(a), len(b)))) - 2).format
     av, bv = memoryview(a), memoryview(b)
     a = [av[i: i + per_line] for i in range(0, len(a), per_line)]
