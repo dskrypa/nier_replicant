@@ -4,9 +4,9 @@ Utils for Nier Replicant save file constructs
 :author: Doug Skrypa
 """
 
-from construct import Int8ul, Bytes, Enum, Adapter, EnumIntegerString, BitsSwapped, BitStruct
+from construct import Int8ul, Bytes, Enum, Adapter, EnumIntegerString, BitsSwapped, BitStruct, Flag
 
-__all__ = ['EnumIntStr', 'IntEnum', 'BitStructLE', '_struct_parts']
+__all__ = ['EnumIntStr', 'IntEnum', 'BitStructLE', '_struct_parts', 'BitFlagEnum']
 
 
 def _struct_parts(sections, unknowns, struct=Int8ul):
@@ -29,6 +29,12 @@ def BitStructLE(sections, unknowns, struct, expand: bool = False):
         return BitsSwapped(BitStruct(*_expanded_parts(sections, unknowns, struct)))
     else:
         return BitsSwapped(BitStruct(*_struct_parts(sections, unknowns, struct)))
+
+
+def BitFlagEnum(byte_width: int, **labels):
+    bits = byte_width * 8
+    rev_labels = {v: k for k, v in labels.items()}
+    return BitsSwapped(BitStruct(*(rev_labels.get(i, f'_unk_{i}') / Flag for i in range(bits))))
 
 
 class EnumIntStr(EnumIntegerString):

@@ -11,7 +11,7 @@ from ..constants import DOCUMENTS, KEY_ITEMS, MAPS, WORDS, CHARACTERS, PLANTS, F
 from ..constants import RAW_MATERIALS, RECOVERY, FERTILIZERS, SEEDS, CULTIVATED, BAIT, FISH, ABILITIES
 from ..constants import TUTORIALS, QUESTS, QUESTS_NEW_1, QUESTS_VIEWED, FISH_RECORDS
 from .adapters import DateTime, Checksum, Weapon, Quests
-from .utils import IntEnum, BitStructLE, _struct_parts
+from .utils import IntEnum, BitStructLE, BitFlagEnum, _struct_parts
 
 
 Character = Enum(Int32ul, **{k: i for i, k in enumerate(CHARACTERS)})
@@ -171,33 +171,26 @@ Savefile = Struct(
     checksum=Checksum,  # 4
     _unk19=Bytes(12),  # zeros
 )
-
-"""
-@@ total_play_time @@
-- 230805.59111096337
-+ 230815.530786369
-@@ save_time @@
-@@ -1 +1 @@ save_time
--"2021-08-12 17:43:18 "
-+"2021-08-13 15:08:39 "
-@@ -1,4 +1,4 @@ _unk18b1
-- 0x00: 04000006  |  ....  |  b'\x04\x00\x00\x06'
-+ 0x00: 05000006  |  ....  |  b'\x05\x00\x00\x06'
-  0x04: 00000003  |  ....  |  b'\x00\x00\x00\x03'
-  0x08: 00000007  |  ....  |  b'\x00\x00\x00\x07'
-  0x0C: 00000002  |  ....  |  b'\x00\x00\x00\x02'
-"""
-
 # endregion
 
+# region Header
+# Header size: 33,120
 Header = Struct(
-    _unk=Bytes(33120),
+    _unk1=Bytes(4),         # Always 0x6E (ascii: 'n')
+    endings=BitFlagEnum(1, A=0, B=1, C=2, D=3, E=4),
+    _unk2=Bytes(35),        # zeros
+    _unk3=Bytes(16),        # Changes between young->old and no ending -> ending
+    _unk4=Bytes(24),        # zeros
+    _unk5=Bytes(344),       # Changes between endings; maybe between main story missions?
+    _unk6=Bytes(32680),     # zeros
+    _unk7=Bytes(8),         # Changes between endings; maybe between main story missions?
+    _unk8=Bytes(8),         # zeros
 )
+# endregion
 
 # I suspect the ending D "deletion" of saves just moves them into a slot outside of the initial array of 3
-# Gamedata = Struct(_unk=Bytes(33120), slots=RawCopy(Savefile)[7])
 Gamedata = Struct(header=RawCopy(Header), slots=RawCopy(Savefile)[7])
 
-# Savefile.sizeof() => 37472
-# * 3 = 112416
-# * 4 = 149888
+# Savefile.sizeof() => 37,472
+# * 3 = 112,416
+# * 4 = 149,888
