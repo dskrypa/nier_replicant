@@ -80,7 +80,7 @@ def parser():
 
     for _parser in (diff_files, diff_slots):
         _group = _parser.add_argument_group('Diff Options')
-        _group.add_argument('--per_line', '-L', type=int, default=40, help='Number of bytes to print per line (binary data only)')
+        _group.add_argument('--per_line', '-L', type=int, default=32, help='Number of bytes to print per line (binary data only)')
         _group.add_argument('--binary', '-b', action='store_true', help='Show the binary version, even if a higher level representation is available')
         _fields = _parser.add_argument_group('Field Options').add_mutually_exclusive_group()
         _fields.add_argument('--keys', '-k', nargs='+', help='Specific keys/attributes to include in the diff (default: all)')

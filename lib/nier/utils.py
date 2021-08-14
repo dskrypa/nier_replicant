@@ -138,7 +138,7 @@ def unified_byte_diff(
     a = [av[i: i + per_line] for i in range(0, len(a), per_line)]
     b = [bv[i: i + per_line] for i in range(0, len(b), per_line)]
 
-    for group in SequenceMatcher(None, a, b).get_grouped_opcodes(n):
+    for group in SequenceMatcher(None, a, b, autojunk=False).get_grouped_opcodes(n):
         first, last = group[0], group[-1]
         file1_range = _format_range_unified(first[1], last[2])
         file2_range = _format_range_unified(first[3], last[4])

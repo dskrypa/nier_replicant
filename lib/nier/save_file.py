@@ -19,7 +19,7 @@ from typing import Union, Optional, Iterator, Collection, Any
 from construct.lib.containers import ListContainer, Container
 
 from .constants import EMPTY_SAVE_SLOT, MAP_ZONE_MAP, SEED_RESULT_MAP
-from .constructs import Gamedata, Savefile, Plot
+from .constructs import Gamedata, Savefile, Plot, Header
 from .utils import to_hex_and_str, pseudo_json, colored, unified_byte_diff, cached_classproperty, unique_path
 from .utils import without_unknowns, pseudo_json_rows
 
@@ -86,9 +86,13 @@ class Constructed:
                     print(f'--- {self}')
                     print(f'+++ {other}')
 
-                if isinstance(self, GameData) and key == 'slots':
-                    for own_slot, other_slot in zip(self.slots, other.slots):
-                        own_slot.diff(other_slot, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=keys)
+                if isinstance(self, GameData) and key in ('slots', 'header'):
+                    if key == 'slots':
+                        for own, other_slot in zip(self.slots, other.slots):
+                            own.diff(other_slot, max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=keys)
+                    elif key == 'header':
+                        h_keys = set(keys).difference({'header'}) if keys else None
+                        own_val.diff(other[key], max_len=max_len, per_line=per_line, byte_diff=byte_diff, keys=h_keys)
                 elif not byte_diff and own_val != own_raw and not isinstance(own_val, (float, int, str)):
                     print(colored(f'@@ {key} @@', 6))
                     func = pseudo_json_rows if key in row_keys else pseudo_json
@@ -201,6 +205,7 @@ class GameData(Constructed, construct=Gamedata):
     def __init__(self, data: bytes, path: Path = None):
         super().__init__(data)
         self._path = path
+        self.header = GameDataHeader(self._parsed.header, self)
         self.slots = [SaveFile(slot, i, self) for i, slot in enumerate(self._parsed.slots, 1)]
 
     @classmethod
@@ -248,7 +253,19 @@ class GameData(Constructed, construct=Gamedata):
         :param slot_or_key: A slot index or key for a sub-construct
         :return: A :class:`SaveFile` for the given slot, or the specified sub-construct
         """
-        return self.slots[slot_or_key] if isinstance(slot_or_key, int) else self._parsed[slot_or_key]
+        if isinstance(slot_or_key, int):
+            return self.slots[slot_or_key]
+        elif slot_or_key == 'header':
+            return self.header
+        else:
+            # return _clean(self._parsed[slot_or_key])
+            raise KeyError(slot_or_key)
+
+    def __getattr__(self, key: str):
+        try:
+            return self[key]
+        except KeyError as e:
+            raise AttributeError(f'{self.__class__.__name__} has no attribute {key}') from e
 
     def __setitem__(self, slot: int, value: 'SaveFile'):
         """
@@ -272,11 +289,25 @@ class GameData(Constructed, construct=Gamedata):
         value._num = slot + 1
 
     def __delitem__(self, slot: int):
+        if not isinstance(slot, int):
+            raise TypeError(f'Can only delete SaveFile slot values - index type={type(slot).__name__} is not supported')
         self[slot] = SaveFile.empty()
 
     def __iter__(self) -> Iterator['SaveFile']:
         """Iterate over the first 3 :class:`SaveFile`s"""
         yield from self.slots[:3]
+
+
+class GameDataHeader(Constructed, construct=Header):
+    def __init__(self, data: Union[Container, bytes], parent: GameData = None):
+        self._parent = parent
+        if isinstance(data, bytes):
+            super().__init__(data)
+        else:
+            super().__init__(data['data'], data['value'])  # raw bytes data / parsed value from RawCopy
+
+    # def __repr__(self) -> str:
+    #     return f'<GameDataHeader[]>'
 
 
 class SaveFile(Constructed, construct=Savefile):

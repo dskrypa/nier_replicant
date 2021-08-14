@@ -11,4 +11,4 @@ equipped words, fishing records, item new/viewed states, and more.
 :author: Doug Skrypa
 """
 
-from .game_data import Savefile, Gamedata, Plot
+from .game_data import Savefile, Gamedata, Plot, Header
