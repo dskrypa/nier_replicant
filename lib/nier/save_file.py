@@ -305,7 +305,7 @@ class SaveFile(Constructed, construct=Savefile):
 
     def __repr__(self) -> str:
         time = self.save_time.isoformat(' ') if isinstance(self.save_time, datetime) else 'N/A'
-        return f'<SaveFile#{self._num}[{time}][{self.play_time}][{self._name}, Lv.{self.level} @ {self.location}]>'
+        return f'<SaveFile#{self._num}[{time}][{self.play_time}][{self._name}, Lv.{self.level + 1} @ {self.location}]>'
 
     @property
     def ok(self) -> bool:

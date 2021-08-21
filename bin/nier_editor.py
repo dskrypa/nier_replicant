@@ -99,7 +99,7 @@ def main():
     log_fmt = '%(asctime)s %(levelname)s %(name)s %(lineno)d %(message)s' if args.verbose else '%(message)s'
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format=log_fmt)
 
-    if (action := args.action) in ('view', 'edit'):
+    if (action := args.action) in {'view', 'edit'}:
         game_data = GameData.load(get_path(args.path))
         if action == 'view':
             view(game_data, args.item, args.slot, args)
@@ -125,7 +125,7 @@ def view(game_data: GameData, item: str, slot_num: int, args):
         if len(slots) > 1:
             raise ValueError('--slot is required for viewing items')
         slots[0].pprint(keys=set(ITEM_SECTIONS))
-    elif item in ('attrs', 'header'):
+    elif item in {'attrs', 'header'}:
         if item == 'attrs' and len(slots) > 1:
             raise ValueError('--slot is required for viewing attributes')
         obj = slots[0] if item == 'attrs' else game_data.header

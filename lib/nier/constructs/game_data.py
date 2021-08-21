@@ -177,8 +177,8 @@ Savefile = Struct(
 # Header size: 33,120
 Header = Struct(
     _unk1=Bytes(4),         # 1st byte is always 0x6E (110; ascii: 'n'), the rest are 0s
-    endings=BitFlagEnum(1, 'ABCDE'),
-    _unk2=Bytes(35),        # zeros
+    endings=BitFlagEnum(4, 'ABCDE'),
+    d_name=PaddedString(32, 'utf-8'),  # The name deleted during ending D; cannot re-use for new game afterwards
     _unk3=Bytes(16),        # Changes between young->old and no ending -> ending
     _unk4=Bytes(24),        # zeros
     _unk5=Bytes(344),       # Changes between endings; maybe between main story missions?
@@ -194,3 +194,7 @@ Gamedata = Struct(header=RawCopy(Header), slots=RawCopy(Savefile)[7])
 # Savefile.sizeof() => 37,472
 # * 3 = 112,416
 # * 4 = 149,888
+
+# Initially upon completing ending D, the most recently used save slot is copied to slot 7; 4-6 are unused. Slots 1-3
+# are not actually wiped out, but something in the header (name in _unk2?) tells the game to prevent those from being
+# offered as an option to load.
