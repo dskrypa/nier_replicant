@@ -126,12 +126,18 @@ Savefile = Struct(
     total_play_time=Float64l,
     _unk13=Bytes(4),  # zeros
     weapons=Weapons,  # 51
+    _unk14a=Bytes(1),
+    _maybe_weapon_viewed_states=Bytes(32),  # 0x1b: 8e -> 0e after viewing Labyrinth's Song (new->viewed)
 
-    _unk14=Bytes(225),  # Definitely contains something related to main story mission progress
-    # 0x1b: 8e -> 0e after viewing Labyrinth's Song (new->viewed)
+    _unk14b=Bytes(23),  # likely related to main story mission progress
+    _unk14c=Bytes(137),  # zeros in new game; content in old game
+    _unk14d=Bytes(32),  # likely related to main story mission progress
 
     quests=Quests(512, QUESTS),
-    _unk15a=Bytes(280),  # Definitely contains something related to main story mission progress
+
+    _unk15a1=Bytes(256),  # zeros in new game; content in old game
+    _unk15a2=Bytes(24),  # likely related to main story mission progress
+
     quest_viewed_states=QuestViewedStates,  # 11
     _unk15b=Bytes(21),
     words=WordsLearned,  # 16
@@ -144,8 +150,11 @@ Savefile = Struct(
     _unk16c=Bytes(17),
     tutorials=Tutorials,  # 12  # Whether a given tutorial has been unlocked
 
-    _unk17a1=Bytes(68),  # Seems to contain Tutorial new/viewed
+    # _unk17a1=Bytes(68),  # Seems to contain Tutorial new/viewed
     # 0x00D: 33 -> 13 on Tutorial "Weapon Quick Switching" New -> viewed
+    _unk17a1a=Bytes(4),  # zeros
+    _maybe_tutorial_viewed_states=Bytes(16),
+    _unk17a1b=Bytes(48),
 
     fishing_record_sizes=FishRecordSizesCm,  # 120; value / 2.54 => inches
     _unk17a2=Bytes(72),
@@ -196,6 +205,6 @@ Gamedata = Struct(header=RawCopy(Header), slots=RawCopy(Savefile)[7])
 # * 3 = 112,416
 # * 4 = 149,888
 
-# Initially upon completing ending D, the most recently used save slot is copied to slot 7; 4-6 are unused. Slots 1-3
-# are not actually wiped out, but something in the header (name in _unk2?) tells the game to prevent those from being
-# offered as an option to load.
+# Initially upon completing ending D, the most recently used save slot is copied to slot 7 (index 6); 4-6 are unused.
+# Slots 1-3 are not actually wiped out, but header.d_name seems to tell the game to prevent those from being offered as
+# an option to load.

@@ -15,6 +15,7 @@ from nier.save_file import GameData
 from nier.utils import colored
 
 ITEM_SECTIONS = ('recovery', 'cultivation', 'fishing', 'raw_materials')
+SLOTS = (1, 2, 3, 4, 5, 6, 7)
 log = logging.getLogger(__name__)
 
 
@@ -66,7 +67,7 @@ def parser():
     for _parser in _parsers:
         _parser.add_argument('--path', '-p', help='Save file path')
         if _parser is not view_header:
-            _parser.add_argument('--slot', '-s', type=int, choices=(1, 2, 3), help='Save slot to load/modify')
+            _parser.add_argument('--slot', '-s', type=int, choices=SLOTS, help='Save slot to load/modify')
         _parser.add_argument('--verbose', '-v', action='store_true', help='Increase logging verbosity')
 
     # endregion
@@ -74,12 +75,12 @@ def parser():
     diff_parser = parser.add_subparser('action', 'diff', 'View the difference between 2 save files/slots')
     diff_files = diff_parser.add_subparser('item', 'files', 'View the difference between 2 save files')
     diff_files.add_argument('paths', nargs=2, help='The save files to process')
-    diff_files.add_argument('--slot1', '-s1', type=int, choices=(1, 2, 3), help='Save slot in file 1. If specified, must also specify --slot2/-s2 (default: full file diff)')
-    diff_files.add_argument('--slot2', '-s2', type=int, choices=(1, 2, 3), help='Save slot in file 2. If specified, must also specify --slot1/-s1 (default: full file diff)')
+    diff_files.add_argument('--slot1', '-s1', type=int, choices=SLOTS, help='Save slot in file 1. If specified, must also specify --slot2/-s2 (default: full file diff)')
+    diff_files.add_argument('--slot2', '-s2', type=int, choices=SLOTS, help='Save slot in file 2. If specified, must also specify --slot1/-s1 (default: full file diff)')
     diff_files.add_argument('--verbose', '-v', action='store_true', help='Increase logging verbosity')
 
     diff_slots = diff_parser.add_subparser('item', 'saves', 'View the difference between 2 save slots')
-    diff_slots.add_argument('slots', nargs=2, type=int, choices=(1, 2, 3), help='The save slots/entries to compare')
+    diff_slots.add_argument('slots', nargs=2, type=int, choices=SLOTS, help='The save slots/entries to compare')
     diff_slots.add_argument('--path', '-p', help='Save file path')
     diff_slots.add_argument('--verbose', '-v', action='store_true', help='Increase logging verbosity')
 
