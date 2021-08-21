@@ -42,8 +42,8 @@ class DateTime(Adapter):  # noqa
 class Checksum(Subconstruct):  # noqa
     def __init__(self, seek: int, read: int):
         super().__init__(Int32ul)
-        self._seek = seek
-        self._read = read
+        self._seek = seek  # Number of bytes to seek backwards from the position of the checksum struct
+        self._read = read  # Number of bytes from the backwards seek position to read / include in the sum
 
     def _get_checksum(self, stream: BytesIO):
         pos = stream.tell()
