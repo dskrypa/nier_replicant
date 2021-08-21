@@ -106,10 +106,12 @@ class Quests(Adapter):  # noqa
         last = -1
         for i, (name, (start, end)) in enumerate(quest_map.items()):
             if pad := start - last - 1:
-                fields.append(f'_unk_{i}' / Bit[pad])  # noqa
+                # fields.append(f'_unk_{i}' / Bit[pad])  # noqa
+                fields.append(f'unk_{i}' / Bit[pad])  # noqa
 
             if mid := end - start - 1:
-                fields.append(name / Struct(started=Flag, _unk=Bit[mid], done=Flag))
+                # fields.append(name / Struct(started=Flag, _unk=Bit[mid], done=Flag))
+                fields.append(name / Struct(started=Flag, stages=Bit[mid], done=Flag))
             else:
                 fields.append(name / Struct(started=Flag, done=Flag))
             last = end
@@ -127,7 +129,8 @@ class Quests(Adapter):  # noqa
         else:
             b = obj.pop('Thieves in Training (2)')
             obj['Thieves in Training'] = {
-                'started': a['started'], '_unk': a['_unk'], '_a': a['done'], '_b': b['started'], 'done': b['done']
+                # 'started': a['started'], '_unk': a['_unk'], '_a': a['done'], '_b': b['started'], 'done': b['done']
+                'started': a['started'], 'stages': a['stages'], '_a': a['done'], '_b': b['started'], 'done': b['done']
             }
         return obj
 
@@ -137,6 +140,9 @@ class Quests(Adapter):  # noqa
         except KeyError:
             pass
         else:
-            obj['Thieves in Training (1)'] = {'started': quest['started'], '_unk': quest['_unk'], 'done': quest['_a']}
+            # obj['Thieves in Training (1)'] = {'started': quest['started'], '_unk': quest['_unk'], 'done': quest['_a']}
+            obj['Thieves in Training (1)'] = {
+                'started': quest['started'], 'stages': quest['stages'], 'done': quest['_a']
+            }
             obj['Thieves in Training (2)'] = {'started': quest['_b'], 'done': quest['done']}
         return obj

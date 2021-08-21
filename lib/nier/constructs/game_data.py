@@ -135,7 +135,11 @@ Savefile = Struct(
 
     quests=Quests(512, QUESTS),
 
-    _unk15a1=Bytes(256),  # zeros in new game; content in old game
+    # _unk15a1=Bytes(256),  # zeros in new game; content in old game
+    _unk15a1a=Bytes(200),
+    sheep_kill_count=Int8ul,  # May be larger byte width
+    _unk15a1b=Bytes(55),
+
     _unk15a2=Bytes(24),  # likely related to main story mission progress
 
     quest_viewed_states=QuestViewedStates,  # 11
