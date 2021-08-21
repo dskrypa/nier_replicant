@@ -39,16 +39,16 @@ class DateTime(Adapter):  # noqa
         return {f: 0 for f in fields} if obj is None else {f: getattr(obj, f) for f in fields}
 
 
-@singleton
 class Checksum(Subconstruct):  # noqa
-    def __init__(self):
+    def __init__(self, seek: int, read: int):
         super().__init__(Int32ul)
+        self._seek = seek
+        self._read = read
 
-    @classmethod
-    def _get_checksum(cls, stream: BytesIO):
+    def _get_checksum(self, stream: BytesIO):
         pos = stream.tell()
-        stream.seek(pos - 37472 + 16)  # Savefile.sizeof() => 37472
-        checksum = sum(stream.read(3104))
+        stream.seek(pos - self._seek)
+        checksum = sum(stream.read(self._read))
         stream.seek(pos)
         return checksum
 

@@ -154,7 +154,8 @@ Savefile = Struct(
     garden=Garden,  # 360
     _unk17b1=Bytes(189),
     fishing_record_states=FishRecordStates,  # 15
-    _unk17b2=Bytes(128),
+    _unk17b2a=Bytes(99),  # Last block in checksum
+    _unk17b2b=Bytes(29),  # Outside of checksum
     quests_b=Quests(32, QUESTS_NEW_1),
 
     _unk18a1=Bytes(240),  # May contain main story mission progress?
@@ -168,7 +169,7 @@ Savefile = Struct(
     _unk18b0=Int8ul,  # Seems to increment by 1 when saving the next day; may be uint16; can't be int32
     _unk18b1=Bytes(199),
     _unk18b2=Bytes(32771),  # zeros
-    checksum=Checksum,  # 4
+    checksum=Checksum(37456, 3104),  # 4
     _unk19=Bytes(12),  # zeros
 )
 # endregion
@@ -176,15 +177,15 @@ Savefile = Struct(
 # region Header
 # Header size: 33,120
 Header = Struct(
-    _unk1=Bytes(4),         # 1st byte is always 0x6E (110; ascii: 'n'), the rest are 0s
+    _unk1=Bytes(4),                     # 1st byte is always 0x6E (110; ascii: 'n'), the rest are 0s
     endings=BitFlagEnum(4, 'ABCDE'),
-    d_name=PaddedString(32, 'utf-8'),  # The name deleted during ending D; cannot re-use for new game afterwards
-    _unk3=Bytes(16),        # Changes between young->old and no ending -> ending
-    _unk4=Bytes(24),        # zeros
-    _unk5=Bytes(344),       # Changes between endings; maybe between main story missions?
-    _unk6=Bytes(32680),     # zeros
-    _unk7=Bytes(8),         # Changes between endings; maybe between main story missions?
-    _unk8=Bytes(8),         # zeros
+    d_name=PaddedString(32, 'utf-8'),   # The name deleted during ending D; cannot re-use for new game afterwards
+    _unk3=Bytes(16),                    # Changes between young->old and no ending -> ending
+    _unk4=Bytes(24),                    # zeros
+    _unk5=Bytes(344),                   # Changes between endings; maybe between main story missions?
+    _unk6=Bytes(32684),                 # zeros
+    checksum=Checksum(33108, 424),      # The read count may not be correct; 424 = stop before large block of zeros
+    _unk8=Bytes(8),                     # zeros
 )
 # endregion
 
