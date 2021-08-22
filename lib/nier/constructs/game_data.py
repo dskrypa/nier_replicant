@@ -212,3 +212,5 @@ Gamedata = Struct(header=RawCopy(Header), slots=RawCopy(Savefile)[7])
 # Initially upon completing ending D, the most recently used save slot is copied to slot 7 (index 6); 4-6 are unused.
 # Slots 1-3 are not actually wiped out, but header.d_name seems to tell the game to prevent those from being offered as
 # an option to load.
+
+# The endings badges on save slots may be stored in header, not the save slot

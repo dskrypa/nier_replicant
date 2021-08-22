@@ -19,6 +19,7 @@ optional_dependencies = {
         'ipython',
         'pre-commit',                                   # run `pre-commit install` to install hooks
     ],
+    'watcher': ['watchdog'],
 }
 optional_dependencies['ALL'] = sorted(set(chain.from_iterable(optional_dependencies.values())))
 
