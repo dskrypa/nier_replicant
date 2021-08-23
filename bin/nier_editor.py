@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, Path(__file__).resolve().parents[1].joinpath('lib').as_posix())
 import _venv  # This will activate the venv, if it exists and is not already active
 
+import json
 import logging
 from datetime import datetime
 
@@ -50,6 +51,13 @@ def parser():
     edit_items.add_argument('name', help='Item name')
     edit_items.add_argument('quantity', type=int, help='Number of the given item to set')
 
+    bulk_edit = edit_parser.add_subparser('item', 'items_bulk', f'Edit items in bulk')
+    bulk_edit.add_argument('name_quantity_map', metavar='JSON', help='A JSON dict of {"name": quantity} for items to add')
+    _parsers.append(bulk_edit)
+
+    view_info = view_parser.add_subparser('item', 'info')
+    _parsers.append(view_info)
+
     view_attr = view_parser.add_subparser('item', 'attrs', 'View SaveFile attributes')
     view_header = view_parser.add_subparser('item', 'header', 'View GameData header attributes')
     _parsers.append(view_attr)
@@ -61,7 +69,7 @@ def parser():
         _parser.add_argument('--unknowns', '-u', action='store_true', help='Include unknown fields in output')
         _parser.add_argument('--no_sort', '-S', dest='sort_keys', action='store_false', help='Do not sort keys in output')
         view_bin_group = _parser.add_argument_group('Binary Data Options', 'Options that apply when viewing binary data')
-        view_bin_group.add_argument('--per_line', '-L', type=int, default=40, help='Number of bytes to print per line')
+        view_bin_group.add_argument('--per_line', '-L', type=int, default=8, help='Number of bytes to print per line')
         view_bin_group.add_argument('--hide_empty', '-e', type=int, default=10, help='Line threshold above which repeated lines of zeros will be hidden')
 
     for _parser in _parsers:
@@ -86,7 +94,7 @@ def parser():
 
     for _parser in (diff_files, diff_slots):
         _group = _parser.add_argument_group('Diff Options')
-        _group.add_argument('--per_line', '-L', type=int, default=32, help='Number of bytes to print per line (binary data only)')
+        _group.add_argument('--per_line', '-L', type=int, default=8, help='Number of bytes to print per line (binary data only)')
         _group.add_argument('--binary', '-b', action='store_true', help='Show the binary version, even if a higher level representation is available')
         _fields = _parser.add_argument_group('Field Options').add_mutually_exclusive_group()
         _fields.add_argument('--keys', '-k', nargs='+', help='Specific keys/attributes to include in the diff (default: all)')
@@ -139,6 +147,8 @@ def view(game_data: GameData, item: str, slot_num: int, args):
             sort_keys=args.sort_keys,
             struct=repr,
         )
+    elif item == 'info':
+        print(game_data)
     else:
         raise ValueError(f'Unexpected {item=} to view')
 
@@ -168,6 +178,20 @@ def edit(game_data: GameData, item: str, slot_num: int, args):
                 break
         else:
             raise ValueError(f'Could not find item={item_name!r} in {ITEM_SECTIONS=}')
+    elif item == 'items_bulk':
+        for item_name, quantity in json.loads(args.name_quantity_map).items():
+            if not 0 <= quantity <= 99:
+                raise ValueError(f'Invalid {quantity=} - must be between 0 and 99')
+            for section in ITEM_SECTIONS:
+                if item_name in slot[section]:
+                    if section == 'recovery' and quantity > 10:
+                        raise ValueError(f'Invalid {quantity=} - must be between 0 and 10')
+                    old = slot[section][item_name]
+                    log.info(f'Setting quantity for item={item_name} {old} => {quantity} in {section=}')
+                    slot._parsed[section][item_name] = quantity
+                    break
+            else:
+                raise ValueError(f'Could not find item={item_name!r} in {ITEM_SECTIONS=}')
     else:
         raise ValueError(f'Unexpected {item=} to edit')
 

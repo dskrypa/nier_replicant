@@ -140,7 +140,9 @@ Savefile = Struct(
     sheep_kill_count=Int8ul,  # May be larger byte width
     _unk15a1b=Bytes(55),
 
-    _unk15a2=Bytes(24),  # likely related to main story mission progress
+    # _maybe_mission_objective=Bytes(4),
+    _maybe_mission_objective=Int32ul,
+    _unk15a2b=Bytes(20),
 
     quest_viewed_states=QuestViewedStates,  # 11
     _unk15b=Bytes(21),
@@ -212,5 +214,9 @@ Gamedata = Struct(header=RawCopy(Header), slots=RawCopy(Savefile)[7])
 # Initially upon completing ending D, the most recently used save slot is copied to slot 7 (index 6); 4-6 are unused.
 # Slots 1-3 are not actually wiped out, but header.d_name seems to tell the game to prevent those from being offered as
 # an option to load.
+
+# Slot indices 0-2: NieR
+# Slot indices 3-5: Kaine
+# Slot index 6: Saved ending D NieR
 
 # The endings badges on save slots may be stored in header, not the save slot

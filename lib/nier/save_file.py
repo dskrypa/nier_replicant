@@ -339,8 +339,10 @@ class SaveFile(Constructed, construct=Savefile):
             print(f'{colored(key, 14)}:')
             self.garden.show(prefix='    ')
         else:
-            if key == 'quests':
-                val = {k: 'started={started}, done={done}'.format(**v) for k, v in without_unknowns(val).items()}
+            if key in {'quests', 'quests_b'}:
+                a = 'started={started}, stages={stages}, done={done}'.format
+                b = 'started={started}, done={done}'.format
+                val = {k: a(**v) if 'stages' in v else b(**v) for k, v in without_unknowns(val).items()}
             super()._pprint(key, val, sort_keys, unknowns=unknowns)
 
     def update_quest(self, name: str, started: bool, done: bool, **kwargs):

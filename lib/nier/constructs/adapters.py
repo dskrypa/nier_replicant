@@ -106,8 +106,8 @@ class Quests(Adapter):  # noqa
         last = -1
         for i, (name, (start, end)) in enumerate(quest_map.items()):
             if pad := start - last - 1:
-                # fields.append(f'_unk_{i}' / Bit[pad])  # noqa
-                fields.append(f'unk_{i}' / Bit[pad])  # noqa
+                fields.append(f'_unk_{i}' / Bit[pad])  # noqa
+                # fields.append(f'unk_{i}' / Bit[pad])  # noqa
 
             if mid := end - start - 1:
                 # fields.append(name / Struct(started=Flag, _unk=Bit[mid], done=Flag))
