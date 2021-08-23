@@ -11,7 +11,8 @@ import struct
 from base64 import b64decode
 from copy import deepcopy
 from datetime import datetime, timedelta
-from functools import cached_property
+from functools import cached_property, reduce
+from operator import xor
 from pathlib import Path
 from typing import Union, Optional, Iterator, Collection, Any
 
@@ -41,6 +42,12 @@ class Constructed:
 
     def __setitem__(self, key: str, value):
         self._parsed[key] = value
+
+    def __eq__(self, other: 'Constructed') -> bool:
+        return self._data == other._data
+
+    def __hash__(self):
+        return reduce(xor, map(hash, (self.__class__, self._data)))
 
     @cached_classproperty
     def _offsets_and_sizes(cls):
@@ -224,7 +231,7 @@ class GameData(Constructed, construct=Gamedata):
             f.write(data)
 
     def __repr__(self) -> str:
-        return '<GameData[\n{}]>'.format(''.join(map('    {!r}\n'.format, self.slots)))
+        return '<GameData[\n    {!r},\n{}\n]>'.format(self.header, ',\n'.join(map('    {!r}'.format, self.slots)))
 
     @property
     def ok(self) -> bool:
@@ -279,6 +286,10 @@ class GameData(Constructed, construct=Gamedata):
         """Iterate over the first 3 :class:`SaveFile`s"""
         yield from self.slots[:3]
 
+    @property
+    def save_time(self) -> datetime:
+        return max(self.slots).save_time
+
 
 class GameDataHeader(Constructed, construct=Header):
     def __init__(self, data: Union[Container, bytes], parent: GameData = None):
@@ -288,8 +299,9 @@ class GameDataHeader(Constructed, construct=Header):
         else:
             super().__init__(data['data'], data['value'])  # raw bytes data / parsed value from RawCopy
 
-    # def __repr__(self) -> str:
-    #     return f'<GameDataHeader[]>'
+    def __repr__(self) -> str:
+        endings = ''.join(k if v else 'x' for i, (k, v) in enumerate(self.endings.items()) if i < 5)
+        return f'<GameDataHeader[endings={endings}]>'
 
 
 class SaveFile(Constructed, construct=Savefile):
@@ -307,19 +319,27 @@ class SaveFile(Constructed, construct=Savefile):
         time = self.save_time.isoformat(' ') if isinstance(self.save_time, datetime) else 'N/A'
         return f'<SaveFile#{self._num}[{time}][{self.play_time}][{self._name}, Lv.{self.level + 1} @ {self.location}]>'
 
+    def __lt__(self, other: 'SaveFile') -> bool:
+        own_time, other_time = self._save_time, other._save_time
+        return own_time < other_time if own_time or other_time else self._num < other._num
+
     @property
     def ok(self) -> bool:
         return self._parsed.corruptness == 200
 
     @cached_property
     def _name(self) -> str:
-        return self.character if self.name.lower() in self.character.lower() else f'{self.name} ({self.character})'
+        return self.character if self.name.lower() in self.character.lower() else f'{self.name} (as {self.character})'
 
     @cached_property
     def play_time(self) -> str:
         hours, seconds = divmod(int(self._parsed.total_play_time), 3600)
         minutes, seconds = divmod(seconds, 60)
         return f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+
+    @cached_property
+    def _save_time(self) -> int:
+        return int(self.save_time.timestamp()) if isinstance(self.save_time, datetime) else 0
 
     @cached_property
     def known_words(self) -> list[str]:
@@ -383,6 +403,10 @@ class SaveFile(Constructed, construct=Savefile):
     def empty(cls) -> 'SaveFile':
         """Creates an empty :class:`SaveFile`"""
         return cls(gzip.decompress(b64decode(EMPTY_SAVE_SLOT)), -1)
+
+    @cached_property
+    def is_empty(self) -> bool:
+        return self._parsed.total_play_time == 0
 
 
 class Garden:
