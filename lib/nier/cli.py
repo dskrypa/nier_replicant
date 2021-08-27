@@ -5,6 +5,7 @@ Utils for the CLI
 """
 
 from argparse import ArgumentParser
+from contextlib import suppress
 from pathlib import Path
 
 
@@ -31,6 +32,13 @@ class ArgParser(ArgumentParser):
             name, help=kwargs.pop('help', help_desc), description=kwargs.pop('description', help_desc), **kwargs
         )
         return sub_parser  # noqa
+
+    def parse_args(self, *args, **kwargs):
+        args = super().parse_args(*args, **kwargs)
+        with suppress(AttributeError):
+            if missing := next((sp for sp in self._subparsers._group_actions if getattr(args, sp.dest) is None), None):
+                self.error(f'missing required positional argument: {missing.dest} (use --help for more details)')
+        return args
 
 
 def get_path(path: str) -> Path:
