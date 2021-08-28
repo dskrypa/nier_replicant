@@ -10,11 +10,15 @@ from types import TracebackType
 from typing import Union, Iterator, Iterable
 from unicodedata import category
 
-from colored import stylize, fg
+from colored import stylize, fg as _fg, bg as _bg
 
 
-def colored(text, fg_color, do_color: bool = True):
-    return stylize(text, fg(fg_color)) if do_color and fg_color is not None else text
+def colored(text, fg=None, do_color: bool = True, bg=None):
+    if fg is not None and bg is not None:
+        colors = (_fg(fg), _bg(bg))
+    else:
+        colors = _fg(fg) if fg is not None else _bg(bg) if bg is not None else ()
+    return stylize(text, colors) if do_color and colors else text
 
 
 def to_hex_and_str(

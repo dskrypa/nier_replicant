@@ -7,7 +7,8 @@ sys.path.insert(0, Path(__file__).resolve().parents[1].joinpath('lib').as_posix(
 import _venv  # This will activate the venv, if it exists and is not already active
 
 import logging
-from collections import Counter, defaultdict
+from collections import defaultdict
+from io import StringIO
 
 from nier.cli import ArgParser, get_steam_dir
 from nier.save_file import GameData, Header, SaveFile
@@ -24,6 +25,9 @@ def parser():
     count_parser.add_argument('--show_names', '-n', action='store_true', help='Show the names of the files with the unique values')
 
     diff_parser = parser.add_subparser('action', 'diff', 'Show the diff for a particular field')
+    diff_parser.add_argument('location', choices=('header', 'save'), help='The field to display')
+    diff_parser.add_argument('field', help='The field to display')
+    diff_parser.add_argument('--global', '-g', action='store_true', help='Highlight changes across all lines (default: only between the lines where they changed)')
     group = diff_parser.add_argument_group('Diff Options')
     group.add_argument('--per_line', '-L', type=int, default=8, help='Number of bytes to print per line (binary data only)')
     group.add_argument('--binary', '-b', action='store_true', help='Show the binary version, even if a higher level representation is available')
@@ -47,9 +51,8 @@ def main():
     if action == 'count':
         count_changes(load_data(args.dir), args.unknowns, args.show_names)
     elif action == 'diff':
-        # TODO: Show tabular diff of a selected field across files
         save_data = load_data(args.dir)
-        pass
+        multi_diff(args.location, args.field, save_data, getattr(args, 'global'))
     else:
         raise ValueError(f'Unexpected {action=}')
 
@@ -82,31 +85,47 @@ def count_changes(
         print(f'{label} field unique value counts:')
         for field, val_paths in field_dict.items():
             if (not only_unknowns or field.startswith('_')) and (num_values := len(val_paths)) > 1:
-                print(f'  - {field}: {num_values}')
+                print(f'  - {field} (len={len(next(iter(val_paths)))}): {num_values}')
                 if show_names:
                     for value, paths in val_paths.items():
                         print('     - {}'.format(collapsed_ranges_str((path.name for path in paths))))
 
 
-# def diff(item: str, args):
-#     if item == 'files':
-#         obj_a, obj_b = GameData.load(get_path(args.paths[0])), GameData.load(get_path(args.paths[1]))
-#         if args.slot1 or args.slot2:
-#             if not (args.slot1 and args.slot2):
-#                 raise ValueError('Either both --slot1/-s1 and --slot2/-s2 must be provided, or neither may be provided')
-#             obj_a, obj_b = obj_a[args.slot1 - 1], obj_b[args.slot2 - 1]
-#     elif item == 'saves':
-#         game_data = GameData.load(get_path(args.path))
-#         obj_a, obj_b = game_data[args.slots[0] - 1], game_data[args.slots[1] - 1]
-#     else:
-#         raise ValueError(f'Unexpected {item=} to compare')
-#
-#     if args.unknowns:
-#         keys = {k for k in obj_a._offsets_and_sizes if k.startswith('_unk')}
-#     else:
-#         keys = set(args.keys) if args.keys else None
-#
-#     obj_a.diff(obj_b, per_line=args.per_line, byte_diff=args.binary, keys=keys, max_len=1)
+def multi_diff(
+    location: str, field: str, save_data: dict[Path, tuple[Header, SaveFile]], global_highlights: bool = False
+):
+    name_val_map = {
+        path.name: (header if location == 'header' else slot).raw(field) for path, (header, slot) in save_data.items()
+    }
+    highlight = highlight_indices(name_val_map.values()) if global_highlights else None
+    fmt = '{{:<{}s}}: {{}}'.format(max(map(len, name_val_map)))
+    last = None
+    for name, value in name_val_map.items():
+        if value != last:
+            sio = StringIO()
+            hex_val = value.hex(' ', -4)
+            highlights = highlight if global_highlights else () if last is None else highlight_indices((last, value))
+            n = 0
+            for a, b in highlights:
+                sio.write(hex_val[n:a])
+                sio.write(colored(hex_val[a:b], fg=11, bg=2))
+                n = b
+            sio.write(hex_val[n:])
+            last = value
+
+            print(fmt.format(name, sio.getvalue()))
+
+
+def _all_equal(values) -> bool:
+    ivalues = iter(values)
+    first = next(ivalues)
+    return all(first == value for value in ivalues)
+
+
+def highlight_indices(values):
+    changed = (not _all_equal(vals) for vals in zip(*values))
+    highlight = [(n, n + 2) for i, b in enumerate(changed) if b and (n := i * 2 + i // 4) is not None]  # noqa
+    return highlight
 
 
 if __name__ == '__main__':

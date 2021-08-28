@@ -108,7 +108,11 @@ Savefile = Struct(
     _unk11=Bytes(168),              # zeros
     maps=Maps,                      # 24
 
-    _unk12a=Bytes(136),  # :40=zeros; 40:84=content; 84:104=zeros; 104:108=content; 108:128=zeros
+    _unk12a1=Bytes(40),
+    _unk12a2=Bytes(32),
+    _unk12a3=Bytes(32),
+    _unk12a4=Bytes(32),
+
     recovery_viewed_states=RecoveryViewedStates,  # 5
     cultivation_viewed_states=CultivationViewedStates,  # 7
     fishing_viewed_states=FishingViewedStates,  # 4
@@ -136,7 +140,9 @@ Savefile = Struct(
     quests=Quests(512, QUESTS),
 
     # _unk15a1=Bytes(256),  # zeros in new game; content in old game
-    _unk15a1a=Bytes(200),
+    _unk15a1a1=Bytes(100),
+    _unk15a1a2=Bytes(100),
+
     sheep_kill_count=Int8ul,  # May be larger byte width
     _unk15a1b=Bytes(55),
 
@@ -167,18 +173,24 @@ Savefile = Struct(
     fishing_record_weights=FishRecordWeightsG,  # 120; value * .00220462 => lbs
     _unk17a3=Bytes(32),
     garden=Garden,  # 360
-    _unk17b1=Bytes(189),
+    _unk17b1a=Bytes(168),
+    _unk17b1b=Bytes(21),
     fishing_record_states=FishRecordStates,  # 15
     _unk17b2a=Bytes(99),  # Last block in checksum; zeros
     _unk17b2b=Bytes(29),  # Outside of checksum; content
     quests_b=Quests(32, QUESTS_NEW_1),
 
-    _unk18a1=Bytes(240),  # May contain main story mission progress?
+    # _unk18a1=Bytes(240),  # May contain main story mission progress?
     # 0xE5:0xE6 seem to change after fighting shades, but also with mission progress...
-
+    _unk18a1a=Bytes(96),
+    _unk18a1b=Bytes(136),
+    _unk18a1c=Bytes(8),
     _unk18a2=Bytes(240),  # zeros
     _unk18a3=Bytes(40),
-    _unk18a4=Bytes(720),  # zeros
+    _unk18a4a=Bytes(68),  # zeros
+    _unk18a4b=Bytes(4),  # Content during Kaine play; maybe bit flags
+    _unk18a4c=Bytes(616),  # zeros
+    _unk18a4d=Bytes(32),  # Content during Kaine play; maybe bit flags
     _unk18a5=Bytes(86),
     save_time=DateTime,  # 7
     _unk18b0=Int8ul,  # Seems to increment by 1 when saving the next day; may be uint16; can't be int32
@@ -197,7 +209,14 @@ Header = Struct(
     d_name=PaddedString(32, 'utf-8'),   # The name deleted during ending D; cannot re-use for new game afterwards
     _unk3=Bytes(16),                    # Changes between young->old and no ending -> ending
     _unk4=Bytes(24),                    # zeros
-    _unk5=Bytes(344),                   # Changes between endings; maybe between main story missions?
+    # _unk5=Bytes(344),                   # Changes between endings; maybe between main story missions?
+    _unk5a=Bytes(28),
+    _unk5b=Bytes(24),
+    _unk5c=Bytes(28),
+    _unk5d=Bytes(84),
+    _unk5e=Bytes(48),
+    _unk5f=Bytes(128),
+    _unk5g=Bytes(4),
     _unk6=Bytes(32684),                 # zeros
     checksum=Checksum(33108, 424),      # The read count may not be correct; 424 = stop before large block of zeros
     _end=Bytes(8),                      # zeros
