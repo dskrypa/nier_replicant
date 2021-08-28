@@ -170,8 +170,8 @@ def without_unknowns(data):
     return data
 
 
-def collapsed(values: Iterable[str], sep: str = '...') -> list[str]:
-    return [start if start == end else f'{start}{sep}{end}' for start, end in collapse_ranges(values)]
+def collapsed_ranges_str(values: Iterable[str], sep: str = '...', delim: str = ', ') -> str:
+    return delim.join(start if start == end else f'{start}{sep}{end}' for start, end in collapse_ranges(values))
 
 
 def collapse_ranges(values: Iterable[str]) -> list[tuple[str, str]]:
