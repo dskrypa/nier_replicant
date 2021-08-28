@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 
 from nier.cli import ArgParser, get_steam_dir
 from nier.save_file import GameData, Header, SaveFile
-from nier.utils import colored
+from nier.utils import colored, collapsed
 
 log = logging.getLogger(__name__)
 
@@ -86,13 +86,8 @@ def count_changes(
                     print(f'  - {field}: {num_values}')
                     if show_names:
                         for value, paths in val_paths.items():
-                            names = [path.name for path in paths]
-                            # TODO: Collapse sequence of GAMEDATA_2021-08-22-1, ..., GAMEDATA_2021-08-22-4
-                            #  into range repr indicating that all sequential values between 1-4 are included
-                            print('     - {}'.format(', '.join(names)))
-                        # for paths in val_paths.values():
-                        #     for path in paths:
-                        #         print(f'     - {path.name}')
+                            print('     - {}'.format(', '.join(collapsed((path.name for path in paths), '...'))))
+
 
 
 # def diff(item: str, args):

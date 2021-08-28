@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 from collections.abc import Mapping, KeysView, ValuesView, Callable
 from datetime import datetime, date, timedelta
@@ -6,7 +7,7 @@ from pathlib import Path
 from struct import calcsize, unpack_from, error as StructError
 from traceback import format_tb
 from types import TracebackType
-from typing import Union
+from typing import Union, Iterator, Iterable
 from unicodedata import category
 
 from colored import stylize, fg
@@ -167,3 +168,56 @@ def without_unknowns(data):
     if isinstance(data, dict):
         return {k: without_unknowns(v) for k, v in data.items() if not isinstance(k, str) or not k.startswith('_')}
     return data
+
+
+def collapsed(values: Iterable[str], sep: str = '...') -> list[str]:
+    return [start if start == end else f'{start}{sep}{end}' for start, end in collapse_ranges(values)]
+
+
+def collapse_ranges(values: Iterable[str]) -> list[tuple[str, str]]:
+    try:
+        match_suffix = collapse_ranges._match_suffix
+    except AttributeError:
+        collapse_ranges._match_suffix = match_suffix = re.compile(r'^(.*?)(\d+)$').match
+
+    groups = []
+    with_suffix = {}
+    for value in values:
+        if m := match_suffix(value):
+            prefix, suffix = m.groups()
+            with_suffix[value] = (prefix, int(suffix))
+        else:
+            groups.append((value, value))
+
+    group = {}
+    last = None
+    for value, (prefix, suffix) in sorted(with_suffix.items(), key=lambda kv: kv[1]):
+        if prefix != last and group:
+            groups.extend(_collapse_ranges(group))
+            group = {}
+
+        group[value] = suffix
+        last = prefix
+
+    if group:
+        groups.extend(_collapse_ranges(group))
+
+    groups.sort()
+    return groups
+
+
+def _collapse_ranges(values: dict[str, int]) -> Iterator[tuple[str, str]]:
+    start, end, last = None, None, None
+    for value, suffix in values.items():
+        if start is None:
+            start = end = value
+        elif suffix - last == 1:
+            end = value
+        else:
+            yield start, end
+            start = end = value
+
+        last = suffix
+
+    if start is not None:
+        yield start, end
