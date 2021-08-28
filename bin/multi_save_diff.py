@@ -81,13 +81,11 @@ def count_changes(
     for label, field_dict in {'Header': header_fields, 'Save file slot': slot_fields}.items():
         print(f'{label} field unique value counts:')
         for field, val_paths in field_dict.items():
-            if not only_unknowns or field.startswith('_'):
-                if (num_values := len(val_paths)) > 1:
-                    print(f'  - {field}: {num_values}')
-                    if show_names:
-                        for value, paths in val_paths.items():
-                            print('     - {}'.format(collapsed_ranges_str((path.name for path in paths))))
-
+            if (not only_unknowns or field.startswith('_')) and (num_values := len(val_paths)) > 1:
+                print(f'  - {field}: {num_values}')
+                if show_names:
+                    for value, paths in val_paths.items():
+                        print('     - {}'.format(collapsed_ranges_str((path.name for path in paths))))
 
 
 # def diff(item: str, args):

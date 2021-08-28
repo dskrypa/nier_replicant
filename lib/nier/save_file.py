@@ -204,8 +204,7 @@ class GameData(Constructed, construct=Gamedata):
     def load(cls, path: Union[str, Path]) -> 'GameData':
         path = Path(path).expanduser()
         log.debug(f'Loading game data from path={path.as_posix()}')
-        with path.open('rb') as f:
-            return cls(f.read(), path)
+        return cls(path.read_bytes(), path)
 
     def save(self, path: Union[str, Path] = None, backup: bool = True):
         """
@@ -227,8 +226,7 @@ class GameData(Constructed, construct=Gamedata):
             shutil.copy(path, bkp_path)
 
         log.info(f'Saving {path.as_posix()}')
-        with Path(path).expanduser().open('wb') as f:
-            f.write(data)
+        Path(path).expanduser().write_bytes(data)
 
     def __repr__(self) -> str:
         return '<GameData[\n    {!r},\n{}\n]>'.format(self.header, ',\n'.join(map('    {!r}'.format, self.slots)))
@@ -385,15 +383,13 @@ class SaveFile(Constructed, construct=Savefile):
 
         data = self._construct.build(self._build())  # Prevent creating an empty file if an exception is raised
         log.info(f'Saving {path.as_posix()}')
-        with Path(path).expanduser().open('wb') as f:
-            f.write(data)
+        Path(path).expanduser().write_bytes(data)
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> 'SaveFile':
         path = Path(path).expanduser()
         log.debug(f'Loading save slot from path={path.as_posix()}')
-        with path.open('rb') as f:
-            return cls(f.read(), -1)
+        return cls(path.read_bytes(), -1)
 
     def copy(self) -> 'SaveFile':
         """Create a deep copy of this :class:`SaveFile` with no :class:`GameData` parent."""
